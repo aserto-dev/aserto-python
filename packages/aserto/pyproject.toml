@@ -1,0 +1,79 @@
+[tool.poetry]
+name = "aserto"
+version = "0.1.1"
+description = "Aserto API client"
+readme = "README.md"
+authors = ["Aserto, Inc. <pypi@aserto.com>"]
+maintainers = ["authereal <authereal@aserto.com>"]
+homepage = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto"
+repository = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto"
+documentation = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto"
+license = "Apache-2.0"
+classifiers = [
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+packages = [
+    {include = "aserto", from = "src"}
+]
+
+[tool.poetry.dependencies]
+aiohttp = "^3.7.4"
+aserto-authorizer-grpc = "^0.2.2"
+python = "^3.7"
+typing-extensions = "^3.10.0"
+
+[tool.poetry.dev-dependencies]
+aserto-authorizer-grpc = {path = "../aserto-authorizer-grpc", develop = true}
+black = "21.7b0"
+isort= "^5.9.3"
+mypy = "^0.910"
+pytest-asyncio = "^0.15.1"
+
+[tool.black]
+line-length = 100
+target-version = ["py37"]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+show_error_codes = true
+check_untyped_defs = true
+disallow_any_decorated = true
+disallow_any_explicit = true
+disallow_any_expr = true
+disallow_any_generics = true
+disallow_any_unimported = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+implicit_reexport = false
+no_implicit_optional = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "test.mock"
+disallow_any_expr = false
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+

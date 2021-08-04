@@ -1,0 +1,69 @@
+[tool.poetry]
+name = "aserto-authorizer-grpc"
+version = "0.2.2"
+description = "gRPC client for Aserto Authorizer service instances"
+readme = "README.md"
+authors = ["Aserto, Inc. <pypi@aserto.com>"]
+maintainers = ["authereal <authereal@aserto.com>"]
+homepage = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto-authorizer-grpc"
+repository = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto-authorizer-grpc"
+documentation = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto-authorizer-grpc"
+license = "Apache-2.0"
+classifiers = [
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+packages = [
+    {include = "aserto_authorizer_grpc", from = "src"},
+    {include = "_asertoproto", from = "src"},
+]
+
+[tool.poetry.dependencies]
+certifi = "^2021.5.30"
+python = "^3.7"
+typing-extensions = "^3.10.0"
+
+# vendored python-betterproto dependencies
+grpclib = "0.4.2"
+python-dateutil = "2.8.2"
+
+[tool.poetry.dev-dependencies]
+betterproto = {git = "https://github.com/danielgtaylor/python-betterproto.git", tag = "v2.0.0b3", extras = ["compiler"]}
+mypy = "^0.910"
+
+[tool.mypy]
+show_error_codes = true
+check_untyped_defs = false
+disallow_any_decorated = false
+disallow_any_explicit = false
+disallow_any_expr = false
+disallow_any_generics = false
+disallow_any_unimported = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+implicit_reexport = true
+no_implicit_optional = true
+strict_equality = true
+strict_optional = false
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+

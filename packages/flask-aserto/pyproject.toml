@@ -1,0 +1,82 @@
+[tool.poetry]
+name = "flask-aserto"
+version = "0.1.1"
+description = "Aserto integration for Flask"
+readme = "README.md"
+authors = ["Aserto, Inc. <pypi@aserto.com>"]
+maintainers = ["authereal <authereal@aserto.com>"]
+homepage = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/flask-aserto"
+repository = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/flask-aserto"
+documentation = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/flask-aserto"
+license = "Apache-2.0"
+classifiers = [
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+packages = [
+    {include = "flask_aserto", from = "src"}
+]
+
+[tool.poetry.dependencies]
+aserto = "^0.1.1"
+python = "^3.7"
+typing-extensions = "^3.10.0"
+
+[tool.poetry.dev-dependencies]
+aserto = {path = "../aserto", develop = true}
+aserto-idp = "^0.1.1"
+black = "21.7b0"
+Flask = {version = "^2.0.1", extras = ["async"]}
+Flask-Cors = "^3.0.10"
+isort= "^5.9.3"
+mypy = "^0.910"
+pytest = "^6.2.4"
+python-dotenv = "^0.19.0"
+
+[tool.black]
+line-length = 100
+target-version = ["py37"]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+show_error_codes = true
+check_untyped_defs = true
+disallow_any_decorated = false
+disallow_any_explicit = false
+disallow_any_expr = false  # flask generates too many `Any` types
+disallow_any_generics = true
+disallow_any_unimported = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+implicit_reexport = false
+no_implicit_optional = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["flask_cors"]
+ignore_missing_imports = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
