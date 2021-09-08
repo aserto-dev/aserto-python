@@ -4,6 +4,8 @@ from typing import Optional
 
 from typing_extensions import Literal
 
+from ._typing import assert_unreachable
+
 __all__ = ["Authorizer", "EdgeAuthorizer", "HostedAuthorizer"]
 
 
@@ -42,8 +44,16 @@ class HostedAuthorizer(Authorizer):
         service_type: ServiceType,
     ):
         self._api_key = api_key
-        self._url = url
         self._service_type = service_type
+
+        if url != ASERTO_HOSTED_AUTHORIZER_URL:
+            self._url = url
+        elif service_type == "gRPC":
+            self._url = ASERTO_HOSTED_AUTHORIZER_URL + ":8443"
+        elif service_type == "REST":
+            self._url = ASERTO_HOSTED_AUTHORIZER_URL
+        else:
+            assert_unreachable(service_type)
 
     @property
     def service_type(self) -> ServiceType:
