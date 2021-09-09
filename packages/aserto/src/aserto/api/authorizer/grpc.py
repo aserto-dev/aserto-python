@@ -54,7 +54,6 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
     @asynccontextmanager  # type: ignore[misc]
     async def _authorizer_client(self, deadline: Optional[Union[datetime, timedelta]]) -> AsyncGenerator[AuthorizerStub, None]:  # type: ignore[misc]
         result = urlparse(self._authorizer.url)
-        print(dict(url=self._authorizer.url, port=result.port))
         channel = Channel(
             host=result.hostname,
             port=result.port,
