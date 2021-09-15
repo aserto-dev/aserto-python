@@ -119,7 +119,6 @@ class AsertoMiddleware:
             policy_path=policy_path,
             resource_context=resource_context,
         )
-        print(decisions)
         return decisions[decision]
 
     @overload
