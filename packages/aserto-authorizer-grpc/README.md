@@ -1,5 +1,5 @@
 # Aserto Authorizer gRPC client
-This is an automatically generated client for interacting with Aserto's [Authorizer service](https://docs.aserto.com/authorizer-guide/overview) using the gRPC protocol.
+This is an automatically generated client for interacting with Aserto's [Authorizer service](https://docs.aserto.com/docs/authorizer-guide/overview) using the gRPC protocol.
 
 ## Installation
 ### Using Pip

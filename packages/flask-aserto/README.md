@@ -20,7 +20,7 @@ def api_user(id: str) -> Response:
     # policy returns a decision of "allowed = false" 
     ...
 ```
-### Automatically create a route to serve a [Display State Map](https://docs.aserto.com/authorizer-guide/display-state-map)
+### Automatically create a route to serve a [Display State Map](https://docs.aserto.com/docs/authorizer-guide/display-state-map)
 ```py
 # Defaults to creating a route at the path "/__displaystatemap" 
 aserto.register_display_state_map(app)

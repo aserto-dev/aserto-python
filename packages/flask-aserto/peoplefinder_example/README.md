@@ -1,5 +1,5 @@
 # PeopleFinder example Flask app
-The PeopleFinder app is used to introduce you to Aserto authorization concepts in Aserto's official [Getting Started](https://docs.aserto.com/getting-started/quickstart) guide.
+The PeopleFinder app is used to introduce you to Aserto authorization concepts in Aserto's official [Getting Started](https://docs.aserto.com/docs/getting-started/quickstart) guide.
 
 ## Running the app
 You'll want to follow the steps in the guide, but instead of deploying the app, you'll be running it locally.
@@ -29,7 +29,7 @@ poetry run flask run
 ```
 The server should be running on port 3001.
 
-Now head back to your browser and open "https://localhost:3000". The [Exploring PeopleFinder](https://docs.aserto.com/getting-started/exploring-peoplefinder) guide will help you find your way around and see Aserto's features in action.
+Now head back to your browser and open "https://localhost:3000". The [Exploring PeopleFinder](https://docs.aserto.com/docs/getting-started/exploring-peoplefinder) guide will help you find your way around and see Aserto's features in action.
 
 ## Exploring the source code
 - [`app.py`](https://github.com/aserto-dev/aserto-python/blob/main/packages/flask-aserto/peoplefinder_example/app.py) - is where the app's routes are defined.

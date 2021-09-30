@@ -1,7 +1,7 @@
 # Aserto API client
 High-level client interface to Aserto's APIs.
 
-At the moment this only supports interacting with Aserto's [Authorizer service](https://docs.aserto.com/authorizer-guide/overview).
+At the moment this only supports interacting with Aserto's [Authorizer service](https://docs.aserto.com/docs/authorizer-guide/overview).
 ## Installation
 ### Using Pip
 ```sh
