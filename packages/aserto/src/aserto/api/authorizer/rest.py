@@ -24,11 +24,9 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
     def __init__(
         self,
         *,
-        tenant_id: str,
         identity: Identity,
         authorizer: Authorizer,
     ):
-        self._tenant_id = tenant_id
         self._authorizer = authorizer
 
         self._identity_context_field: Mapping[str, str] = {
@@ -44,13 +42,7 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
 
     @property
     def _headers(self) -> Mapping[str, str]:
-        headers = {
-            "Content-Type": "application/json",
-            "Aserto-Tenant-Id": self._tenant_id,
-        }
-
-        if self._authorizer.auth_header is not None:
-            headers["Authorization"] = self._authorizer.auth_header
+        headers = {"Content-Type": "application/json", **self._authorizer.auth_headers}
 
         return headers
 

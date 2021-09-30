@@ -13,7 +13,6 @@ __all__ = ["AsertoMiddlewareOptions", "load_aserto_options_from_environment"]
 
 
 class AsertoMiddlewareOptions(TypedDict):
-    tenant_id: str
     authorizer: HostedAuthorizer
     policy_id: str
     policy_path_root: str
@@ -60,6 +59,7 @@ def load_aserto_options_from_environment() -> AsertoMiddlewareOptions:
 
     authorizer = HostedAuthorizer(
         api_key=authorizer_api_key,
+        tenant_id=tenant_id,
         url=authorizer_service_url,
         service_type="gRPC",
     )
@@ -83,7 +83,6 @@ def load_aserto_options_from_environment() -> AsertoMiddlewareOptions:
         return Identity(type="SUBJECT", subject=identity)
 
     return dict(
-        tenant_id=tenant_id,
         authorizer=authorizer,
         policy_id=policy_id,
         policy_path_root=policy_path_root,

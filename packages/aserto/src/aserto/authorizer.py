@@ -1,6 +1,6 @@
 import ssl
 from abc import ABCMeta, abstractmethod
-from typing import Optional
+from typing import Mapping, Optional
 
 from typing_extensions import Literal
 
@@ -31,8 +31,8 @@ class Authorizer(metaclass=ABCMeta):
         return None
 
     @property
-    def auth_header(self) -> Optional[str]:
-        return None
+    def auth_headers(self) -> Mapping[str, str]:
+        return {}
 
 
 class HostedAuthorizer(Authorizer):
@@ -40,10 +40,12 @@ class HostedAuthorizer(Authorizer):
         self,
         *,
         api_key: str,
+        tenant_id: str,
         url: str = ASERTO_HOSTED_AUTHORIZER_URL,
         service_type: ServiceType,
     ):
         self._api_key = api_key
+        self._tenant_id = tenant_id
         self._service_type = service_type
 
         if url != ASERTO_HOSTED_AUTHORIZER_URL:
@@ -64,12 +66,19 @@ class HostedAuthorizer(Authorizer):
         return self._url
 
     @property
-    def auth_header(self) -> Optional[str]:
-        return f"basic {self._api_key}"
+    def auth_headers(self) -> Mapping[str, str]:
+        return {
+            "authorization": f"basic {self._api_key}",
+            "aserto-tenant-id": self._tenant_id,
+        }
 
     @property
     def api_key(self) -> str:
         return self._api_key
+
+    @property
+    def tenant_id(self) -> str:
+        return self._tenant_id
 
 
 class EdgeAuthorizer(Authorizer):

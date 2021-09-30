@@ -33,7 +33,6 @@ class AsertoMiddleware:
     def __init__(
         self,
         *,
-        tenant_id: str,
         authorizer: Authorizer,
         policy_id: str,
         policy_path_root: str,
@@ -41,7 +40,6 @@ class AsertoMiddleware:
         policy_path_resolver: Optional[MaybeAsyncCallback[str]] = None,
         resource_context_provider: Optional[MaybeAsyncCallback[ResourceContext]] = None,
     ):
-        self._tenant_id = tenant_id
         self._authorizer = authorizer
         self._identity_provider = identity_provider
         self._policy_id = policy_id
@@ -63,7 +61,6 @@ class AsertoMiddleware:
         identity = await maybe_await(self._identity_provider())
 
         return AuthorizerClient(
-            tenant_id=self._tenant_id,
             authorizer=self._authorizer,
             identity=identity,
         )
@@ -73,7 +70,6 @@ class AsertoMiddleware:
             self
             if not kwargs
             else AsertoMiddleware(
-                tenant_id=kwargs.get("tenant_id", self._tenant_id),
                 authorizer=kwargs.get("authorizer", self._authorizer),
                 identity_provider=kwargs.get("identity_provider", self._identity_provider),
                 policy_id=kwargs.get("policy_id", self._policy_id),
@@ -94,7 +90,6 @@ class AsertoMiddleware:
         self,
         decision: str,
         *,
-        tenant_id: str = ...,
         authorizer: Authorizer = ...,
         identity_provider: MaybeAsyncCallback[Identity] = ...,
         policy_id: str = ...,
@@ -129,7 +124,6 @@ class AsertoMiddleware:
     def authorize(
         self,
         *,
-        tenant_id: str = ...,
         authorizer: Authorizer = ...,
         identity_provider: MaybeAsyncCallback[Identity] = ...,
         policy_id: str = ...,

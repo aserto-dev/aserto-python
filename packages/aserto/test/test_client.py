@@ -18,11 +18,11 @@ from .mock import mock_grpc_request, mock_rest_request
 
 def create_client(service_type: Literal["gRPC", "REST"]) -> AuthorizerClient:
     return AuthorizerClient(
-        tenant_id="TENANT-ID",
         identity=Identity(type="NONE"),
         authorizer=HostedAuthorizer(
             url="https://aserto.test",
             api_key="API-KEY",
+            tenant_id="TENANT-ID",
             service_type=service_type,
         ),
     )

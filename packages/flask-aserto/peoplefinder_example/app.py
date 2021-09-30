@@ -30,7 +30,7 @@ def handle_auth_error(exception: AuthorizationError) -> Response:
 @aserto.authorize
 async def api_user(id: str) -> Response:
     people_client = PeopleClient(
-        tenant_id=aserto_options["tenant_id"],
+        tenant_id=aserto_options["authorizer"].tenant_id,
         authorizer_api_key=aserto_options["authorizer"].api_key,
         authorizer_url=aserto_options["authorizer"].url,
     )
@@ -57,7 +57,7 @@ async def api_users() -> Response:
         return Response(status=403)
 
     people_client = PeopleClient(
-        tenant_id=aserto_options["tenant_id"],
+        tenant_id=aserto_options["authorizer"].tenant_id,
         authorizer_api_key=aserto_options["authorizer"].api_key,
         authorizer_url=aserto_options["authorizer"].url,
     )

@@ -29,7 +29,7 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
     def __init__(
         self,
         *,
-        tenant_id: str,
+        tenant_id: Optional[str] = None,
         identity: Identity,
         authorizer: Authorizer,
     ):
@@ -42,14 +42,7 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
 
     @property
     def _headers(self) -> Mapping[str, str]:
-        headers = {
-            "aserto-tenant-id": self._tenant_id,
-        }
-
-        if self._authorizer.auth_header is not None:
-            headers["authorization"] = self._authorizer.auth_header
-
-        return headers
+        return self._authorizer.auth_headers
 
     @asynccontextmanager  # type: ignore[misc]
     async def _authorizer_client(self, deadline: Optional[Union[datetime, timedelta]]) -> AsyncGenerator[AuthorizerStub, None]:  # type: ignore[misc]

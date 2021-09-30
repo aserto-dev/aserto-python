@@ -18,9 +18,12 @@ from aserto.api.authorizer import AuthorizerClient
 
 
 client = AuthorizerClient(
-    tenant_id=ASERTO_TENANT_ID,
     identity=Identity(type="NONE"),
-    authorizer=HostedAuthorizer(api_key=ASERTO_API_KEY, service_type="gRPC"),
+    authorizer=HostedAuthorizer(
+        api_key=ASERTO_API_KEY,
+        tenant_id=ASERTO_TENANT_ID,
+        service_type="gRPC",
+    ),
 )
 
 result = await client.decision_tree(

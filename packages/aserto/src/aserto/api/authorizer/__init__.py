@@ -18,20 +18,17 @@ class AuthorizerClient(AuthorizerClientProtocol):
     def __init__(
         self,
         *,
-        tenant_id: str,
         identity: Identity,
         authorizer: Authorizer,
     ):
         service_type = authorizer.service_type
         if service_type == "gRPC":
             self._client: AuthorizerClientProtocol = AuthorizerGrpcClient(
-                tenant_id=tenant_id,
                 identity=identity,
                 authorizer=authorizer,
             )
         elif service_type == "REST":
             self._client = AuthorizerRestClient(
-                tenant_id=tenant_id,
                 identity=identity,
                 authorizer=authorizer,
             )
