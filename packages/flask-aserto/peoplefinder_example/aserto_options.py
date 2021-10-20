@@ -2,7 +2,7 @@ import os
 from typing import Awaitable, Callable
 
 from aserto import HostedAuthorizer, Identity
-from aserto_idp.auth0 import AccessTokenError, provide_identity
+from aserto_idp.auth0 import AccessTokenError, generate_oauth_subject_from_auth_header
 from flask import request
 from typing_extensions import TypedDict
 
@@ -71,7 +71,7 @@ def load_aserto_options_from_environment() -> AsertoMiddlewareOptions:
             return Identity(type="NONE")
 
         try:
-            identity = await provide_identity(
+            identity = await generate_oauth_subject_from_auth_header(
                 authorization_header=authorization_header,
                 domain=auth0_domain,
                 client_id=auth0_client_id,

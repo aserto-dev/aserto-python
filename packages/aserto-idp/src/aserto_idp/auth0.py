@@ -1,14 +1,14 @@
 from aiohttp import ClientSession
 from jose import jwk, jwt
 
-__all__ = ["provide_identity", "AccessTokenError"]
+__all__ = ["generate_oauth_subject_from_auth_header", "AccessTokenError"]
 
 
 class AccessTokenError(Exception):
     pass
 
 
-async def provide_identity(
+async def generate_oauth_subject_from_auth_header(
     *,
     authorization_header: str,
     domain: str,

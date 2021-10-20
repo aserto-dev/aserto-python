@@ -185,6 +185,7 @@ class AsertoMiddleware:
     def register_display_state_map(
         self,
         app: Flask,
+        *,
         endpoint: str = DEFAULT_DISPLAY_STATE_MAP_ENDPOINT,
         resource_context_provider: Optional[MaybeAsyncCallback[ResourceContext]] = None,
     ) -> Flask:
