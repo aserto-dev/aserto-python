@@ -374,7 +374,7 @@ class JsonSchema(_asertoproto.Message):
     message."        required: ["id"]      }    };    // Id represents the
     message identifier.    string id = 1; [
     (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
-    {description: "The unique identifier of the simple message."        }];  }
+    description: "The unique identifier of the simple message."        }];  }
     """
 
     # Ref is used to define an external reference to include in the message. This
