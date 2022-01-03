@@ -12,6 +12,7 @@ poetry add aserto-authorizer-grpc
 ```
 ## Usage
 ```py
+from aserto_authorizer_grpc import Proto
 from aserto_authorizer_grpc.aserto.api.v1 import (
     IdentityContext,
     IdentityType,
@@ -22,7 +23,6 @@ from aserto_authorizer_grpc.aserto.authorizer.authorizer.v1 import (
     DecisionTreeOptions,
     DecisionTreeResponse,
     PathSeparator,
-    Proto,
 )
 from grpclib.client import Channel
 

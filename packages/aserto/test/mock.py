@@ -13,9 +13,7 @@ def mock_rest_request(response: object) -> Iterator[None]:
     mock_response.json.return_value.set_result(response)
 
     with mock.patch("aiohttp.ClientSession._request") as mock_client_session_request:
-        mock_client_session_request.return_value = Future()
-        mock_client_session_request.return_value.set_result(mock_response)
-
+        mock_client_session_request.return_value = mock_response
         yield
 
     mock_response.json.assert_called()
@@ -37,12 +35,8 @@ def mock_grpc_request(response: object) -> Iterator[None]:
     with mock.patch("grpclib.client.Channel.__connect__") as mock_channel_connect, mock.patch(
         "grpclib.client.Stream.recv_message"
     ) as mock_stream_recv_message:
-        mock_channel_connect.return_value = Future()
-        mock_channel_connect.return_value.set_result(mock_protocol)
-
-        mock_stream_recv_message.return_value = Future()
-        mock_stream_recv_message.return_value.set_result(response)
-
+        mock_channel_connect.return_value = mock_protocol
+        mock_stream_recv_message.return_value = response
         yield
 
     mock_channel_connect.assert_called()

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import AsyncGenerator, Collection, Dict, Mapping, Optional, Union, cast
 from urllib.parse import urlparse
 
+from aserto_authorizer_grpc import Proto
 from aserto_authorizer_grpc.aserto.api.v1 import IdentityContext, IdentityType
 from aserto_authorizer_grpc.aserto.api.v1 import PolicyContext as PolicyContextField
 from aserto_authorizer_grpc.aserto.authorizer.authorizer.v1 import (
@@ -11,7 +12,6 @@ from aserto_authorizer_grpc.aserto.authorizer.authorizer.v1 import (
     DecisionTreeOptions,
     DecisionTreeResponse,
     PathSeparator,
-    Proto,
 )
 from grpclib.client import Channel
 from grpclib.exceptions import StreamTerminatedError

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aserto"
-version = "0.2.0"
+version = "0.2.2"
 description = "Aserto API client"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
@@ -27,8 +27,8 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-aiohttp = "^3.7.4"
-aserto-authorizer-grpc = "^0.2.2"
+aiohttp = "^3.8.1"
+aserto-authorizer-grpc = "^0.3.1"
 python = "^3.7"
 typing-extensions = "^3.10.0"
 

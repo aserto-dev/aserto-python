@@ -2,11 +2,11 @@
 from typing import Dict
 
 import pytest
+from aserto_authorizer_grpc import Proto
 from aserto_authorizer_grpc.aserto.authorizer.authorizer.v1 import (
     Decision,
     DecisionTreeResponse,
     IsResponse,
-    Proto,
 )
 from typing_extensions import Literal
 

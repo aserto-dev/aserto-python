@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aserto-idp"
-version = "0.2.0"
+version = "0.2.1"
 description = "Common identity providers for use with Aserto client libraries"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
@@ -27,7 +27,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-aiohttp = "^3.7.4"
+aiohttp = "^3.8.1"
 python = "^3.7"
 python-jose = {version = "^3.3.0", extras = ["cryptography"]}
 typing-extensions = "^3.10.0"
