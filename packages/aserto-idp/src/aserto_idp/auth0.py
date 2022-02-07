@@ -1,7 +1,14 @@
+import warnings
+
 from aiohttp import ClientSession
 from jose import jwk, jwt
 
 __all__ = ["generate_oauth_subject_from_auth_header", "AccessTokenError"]
+
+
+warnings.warn(
+    "aserto_idp.auth0 is deprecated and will be removed in future versions. Use aserto_idp.oidc instead."
+)
 
 
 class AccessTokenError(Exception):

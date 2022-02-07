@@ -11,25 +11,20 @@ pip install aserto-idp
 poetry add aserto-idp
 ```
 ## Current Identity Providers
-### Auth0
+### OpenID Connect
 ```py
-from aserto_idp.auth0 import generate_oauth_subject_from_auth_header
+from aserto_idp.oidc import identity_provider
 ```
-### Stay tuned for more!
 ## Usage
 ### With [`aserto-authorizer-grpc`](https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto-authorizer-grpc)
 ```py
 from aserto_authorizer_grpc.aserto.api.v1 import IdentityContext, IdentityType
-from aserto_idp.auth0 import AccessTokenError, generate_oauth_subject_from_auth_header
+from aserto_idp.oidc import AccessTokenError, identity_provider
 
+oidc_provider = identity_provider(issuer=OIDC_ISSUER, client_id=OIDC_CLIENT_ID)
 
 try:
-    subject = await generate_oauth_subject_from_auth_header(
-        authorization_header=request.headers["Authorization"],
-        domain=AUTH0_DOMAIN,
-        client_id=AUTH0_CLIENT_ID,
-        audience=AUTH0_AUDIENCE,
-    )
+    subject = await oidc_provider.subject_from_jwt_auth_header(request.headers["Authorization"])
 
     identity_context = IdentityContext(
         type=IdentityType.IDENTITY_TYPE_SUB,
@@ -42,16 +37,12 @@ except AccessTokenError:
 ### With [`aserto`](https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto)
 ```py
 from aserto import Identity
-from aserto_idp.auth0 import AccessTokenError, generate_oauth_subject_from_auth_header
+from aserto_idp.oidc import AccessTokenError, IdentityProvider
 
+oidc_provider = identity_provider(issuer=OIDC_ISSUER, client_id=OIDC_CLIENT_ID)
 
 try:
-    subject = await generate_oauth_subject_from_auth_header(
-        authorization_header=request.headers["Authorization"],
-        domain=AUTH0_DOMAIN,
-        client_id=AUTH0_CLIENT_ID,
-        audience=AUTH0_AUDIENCE,
-    )
+    subject = await oidc_provider.subject_from_jwt_auth_header(request.headers["Authorization"])
 
     identity = Identity(type="SUBJECT", subject=subject)
 except AccessTokenError:
