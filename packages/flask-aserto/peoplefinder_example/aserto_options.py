@@ -2,7 +2,7 @@ import os
 from typing import Awaitable, Callable
 
 from aserto import HostedAuthorizer, Identity
-from aserto_idp.auth0 import AccessTokenError, generate_oauth_subject_from_auth_header
+from aserto_idp.oidc import AccessTokenError, identity_provider as oidc_idp
 from flask import request
 from typing_extensions import TypedDict
 
@@ -32,17 +32,13 @@ def load_aserto_options_from_environment() -> AsertoMiddlewareOptions:
     if not authorizer_api_key:
         missing_variables.append("AUTHORIZER_API_KEY")
 
-    auth0_domain = os.getenv("REACT_APP_DOMAIN", "")
-    if not auth0_domain:
-        missing_variables.append("REACT_APP_DOMAIN")
+    oidc_issuer = os.getenv("OIDC_ISSUER", "")
+    if not oidc_issuer:
+        missing_variables.append("OIDC_ISSUER")
 
-    auth0_client_id = os.getenv("REACT_APP_CLIENT_ID", "")
-    if not auth0_client_id:
-        missing_variables.append("REACT_APP_CLIENT_ID")
-
-    auth0_audience = os.getenv("REACT_APP_AUDIENCE", "")
-    if not auth0_audience:
-        missing_variables.append("REACT_APP_AUDIENCE")
+    oidc_client_id = os.getenv("OIDC_CLIENT_ID", "")
+    if not oidc_client_id:
+        missing_variables.append("OIDC_CLIENT_ID")
 
     policy_id = os.getenv("POLICY_ID", "")
     if not policy_id:
@@ -64,6 +60,8 @@ def load_aserto_options_from_environment() -> AsertoMiddlewareOptions:
         service_type="gRPC",
     )
 
+    idp = oidc_idp(issuer=oidc_issuer, client_id=oidc_client_id)
+
     async def identity_provider() -> Identity:
         authorization_header = request.headers.get("Authorization")
 
@@ -71,18 +69,13 @@ def load_aserto_options_from_environment() -> AsertoMiddlewareOptions:
             return Identity(type="NONE")
 
         try:
-            identity = await generate_oauth_subject_from_auth_header(
-                authorization_header=authorization_header,
-                domain=auth0_domain,
-                client_id=auth0_client_id,
-                audience=auth0_audience,
-            )
+            identity = await idp.subject_from_jwt_auth_header(authorization_header)
         except AccessTokenError:
             return Identity(type="NONE")
 
         return Identity(type="SUBJECT", subject=identity)
 
-    return dict(
+    return AsertoMiddlewareOptions(
         authorizer=authorizer,
         policy_id=policy_id,
         policy_path_root=policy_path_root,
