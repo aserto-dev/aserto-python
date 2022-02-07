@@ -7,11 +7,10 @@ It provides the means to discover and retrieve an OpenID Connect issuer's keyset
 a specified JWT.
 """
 import os.path
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 from aiohttp import ClientSession
-from async_lru import alru_cache
 
 from aserto_idp.oidc.errors import DiscoveryError
 
@@ -30,6 +29,7 @@ class DiscoveryClient:
     def __init__(self, issuer: str):
         self.issuer = issuer_url(issuer)
         self.discovery_url = os.path.join(self.issuer, ".well-known/openid-configuration")
+        self._keyset: Optional[KeySet] = None
 
     async def find_signing_key(self, key_id: str) -> Key:
         """Find and return the signing key for the specified key ID.
@@ -53,11 +53,10 @@ class DiscoveryClient:
                 if key["kid"] == key_id:
                     return key
 
-            self.keyset.cache_clear()
+            self.clear_keyset_cache()
 
         raise DiscoveryError(f"RSA public key with ID '{key_id}' was not found.")
 
-    @alru_cache()
     async def keyset(self) -> KeySet:
         """Downloads the OIDC issuer's signing key-set.
 
@@ -67,15 +66,21 @@ class DiscoveryClient:
         Returns:
             A ``dict`` containing the downloaded JOSE key-set.
         """
-        config = await self.config()
-        keyset_url = config.get("jwks_uri")
-        if not keyset_url:
-            raise DiscoveryError("Issuer openid-configuration missing 'jwks_uri'")
+        if not self._keyset:
+            config = await self.config()
+            keyset_url = config.get("jwks_uri")
+            if not keyset_url:
+                raise DiscoveryError("Issuer openid-configuration missing 'jwks_uri'")
 
-        return await get_json(keyset_url)  # type: ignore
+            self._keyset = await get_json(keyset_url)  # type: ignore
+
+        return self._keyset
 
     async def config(self) -> OidcConfig:
         return await get_json(self.discovery_url)
+
+    def clear_keyset_cache(self) -> None:
+        self._keyset = None
 
 
 def issuer_url(issuer: str) -> str:
