@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aserto-idp"
-version = "0.2.1"
+version = "0.3.0"
 description = "Common identity providers for use with Aserto client libraries"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
@@ -37,6 +37,7 @@ black = "21.7b0"
 isort= "^5.9.3"
 mypy = "^0.910"
 pytest-asyncio = "^0.15.1"
+pytest-cov = "^3.0.0"
 
 [tool.black]
 line-length = 100
@@ -74,8 +75,15 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 # jose generates too many `Any` types
-module = ["aserto_idp.auth0"]  
+module = ["aserto_idp.auth0", "aserto_idp.oidc.*"]
 disallow_any_expr = false
+
+[[tool.mypy.overrides]]
+# lru_cache swallows typing info
+module = ["aserto_idp.oidc.discovery"]
+warn_return_any = false
+disallow_untyped_decorators = false
+disallow_any_decorated = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

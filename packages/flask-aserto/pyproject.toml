@@ -40,7 +40,8 @@ isort= "^5.9.3"
 mypy = "^0.910"
 pytest = "^6.2.4"
 python-dotenv = "^0.19.0"
-aserto-idp = "^0.2.1"
+tox = "^3.24.5"
+aserto-idp = {path = "../aserto-idp", develop = true}
 
 [tool.black]
 line-length = 100

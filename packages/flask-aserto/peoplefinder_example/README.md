@@ -6,10 +6,14 @@ You'll want to follow the steps in the guide, but instead of deploying the app, 
 
 Clone the PeopleFinder demo source:
 ```sh
-git clone https://github.com/aserto-demo/peoplefinder
+git clone https://github.com/aserto-demo/peoplefinder-acmecorp
 ```
 
-To start running the demo, navigate to the `peoplefinder` directory run the following in your terminal:
+Configure the app by navigating to the `peoplefinder-acmecorp` directory, and follow the instructions in the
+[`.env.example`](https://github.com/aserto-demo/peoplefinder-acmecorp/blob/master/.env.example) file to create a local
+configuration file with your Aserto credentials.
+
+To start running the demo, navigate to the `peoplefinder-acmecorp` directory and run the following in your terminal:
 (You'll need to have [Yarn](https://classic.yarnpkg.com/en/docs/install) installed)
 ```sh
 yarn
