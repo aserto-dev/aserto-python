@@ -38,5 +38,5 @@ def policy_path_heuristic(path: str) -> str:
     # Replace route arguments surrounded in angle brackets to being
     # prefixed with two underscores, e.g. <id:str> -> __id
     path = re.sub("<([^:]*)(:[^>]*)?>", r"__\1", path)
-    path = path.replace("/", ".").lower()
+    path = path.replace("/", ".")
     return path
