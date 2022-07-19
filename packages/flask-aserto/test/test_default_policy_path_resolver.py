@@ -5,14 +5,14 @@ from flask_aserto._defaults import (
     policy_path_heuristic,
 )
 
-
 def test_heuristic() -> None:
     assert policy_path_heuristic("/api/users") == ".api.users", "Slashes become dots"
-    assert policy_path_heuristic("/Upercase") == ".upercase", "Uppercase to lowercase"
+    assert policy_path_heuristic("/Upercase") == ".Upercase", "Uppercased stays uppercased"
     assert policy_path_heuristic("/dotted.route") == ".dotted.route", "Dots stay dots"
     assert (
         policy_path_heuristic("/api/users/<id>") == ".api.users.__id"
     ), "Parameters prefixed with double underscores"
+    assert policy_path_heuristic("/api/users/<userID>") == ".api.users.__userID", "Uppercased parameters stay uppercased"
 
 
 def test_policy_route_concatenation() -> None:
