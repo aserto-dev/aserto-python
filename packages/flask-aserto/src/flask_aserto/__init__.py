@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, cast, overload
 
-from aserto import Identity, ResourceContext
-from aserto.api.authorizer import AuthorizerClient
-from aserto.authorizer import Authorizer
+from aserto.client import Identity, ResourceContext
+from aserto.client.api.authorizer import AuthorizerClient
+from aserto.client.authorizer import Authorizer
 from flask import Flask, jsonify
 from flask.wrappers import Response
 
@@ -22,7 +22,7 @@ __all__ = ["AsertoMiddleware", "AuthorizationError"]
 
 @dataclass(frozen=True)
 class AuthorizationError(Exception):
-    policy_id: str
+    policy_name: str
     policy_path: str
 
 
@@ -34,7 +34,7 @@ class AsertoMiddleware:
         self,
         *,
         authorizer: Authorizer,
-        policy_id: str,
+        policy_name: str,
         policy_path_root: str,
         identity_provider: MaybeAsyncCallback[Identity],
         policy_path_resolver: Optional[MaybeAsyncCallback[str]] = None,
@@ -42,7 +42,7 @@ class AsertoMiddleware:
     ):
         self._authorizer = authorizer
         self._identity_provider = identity_provider
-        self._policy_id = policy_id
+        self._policy_name = policy_name
         self._policy_path_root = policy_path_root
 
         self._policy_path_resolver = (
@@ -72,7 +72,7 @@ class AsertoMiddleware:
             else AsertoMiddleware(
                 authorizer=kwargs.get("authorizer", self._authorizer),
                 identity_provider=kwargs.get("identity_provider", self._identity_provider),
-                policy_id=kwargs.get("policy_id", self._policy_id),
+                policy_name=kwargs.get("policy_name", self._policy_name),
                 policy_path_root=kwargs.get("policy_path_root", self._policy_path_root),
                 policy_path_resolver=kwargs.get("policy_path_resolver", self._policy_path_resolver),
                 resource_context_provider=kwargs.get(
@@ -92,7 +92,7 @@ class AsertoMiddleware:
         *,
         authorizer: Authorizer = ...,
         identity_provider: MaybeAsyncCallback[Identity] = ...,
-        policy_id: str = ...,
+        policy_name: str = ...,
         policy_path_root: str = ...,
         policy_path_resolver: MaybeAsyncCallback[str] = ...,
         resource_context_provider: MaybeAsyncCallback[ResourceContext] = ...,
@@ -110,7 +110,7 @@ class AsertoMiddleware:
         )
         decisions = await client.decisions(
             decisions=(decision,),
-            policy_id=self._policy_id,
+            policy_name=self._policy_name,
             policy_path=policy_path,
             resource_context=resource_context,
         )
@@ -126,7 +126,7 @@ class AsertoMiddleware:
         *,
         authorizer: Authorizer = ...,
         identity_provider: MaybeAsyncCallback[Identity] = ...,
-        policy_id: str = ...,
+        policy_name: str = ...,
         policy_path_root: str = ...,
         policy_path_resolver: MaybeAsyncCallback[str] = ...,
     ) -> Callable[[Handler], Handler]:
@@ -170,13 +170,13 @@ class AsertoMiddleware:
 
             decisions = await client.decisions(
                 decisions=("allowed",),
-                policy_id=self._policy_id,
+                policy_name=self._policy_name,
                 policy_path=policy_path,
                 resource_context=resource_context,
             )
 
             if not decisions["allowed"]:
-                raise AuthorizationError(policy_id=self._policy_id, policy_path=policy_path)
+                raise AuthorizationError(policy_name=self._policy_name, policy_path=policy_path)
 
             return await maybe_await(handler(*args, **kwargs))
 
@@ -202,7 +202,7 @@ class AsertoMiddleware:
 
             display_state_map = await client.decision_tree(
                 decisions=["visible", "enabled"],
-                policy_id=self._policy_id,
+                policy_name=self._policy_name,
                 policy_path_root=self._policy_path_root,
                 resource_context=resource_context,
                 policy_path_separator="SLASH",

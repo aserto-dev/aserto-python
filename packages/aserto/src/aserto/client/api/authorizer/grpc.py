@@ -1,20 +1,26 @@
 import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from typing import AsyncGenerator, Collection, Dict, Mapping, Optional, Union, cast
+from typing import AsyncGenerator, Collection, Dict, Mapping, Optional, Union
 from urllib.parse import urlparse
 
-from aserto_authorizer_grpc import Proto
-from aserto_authorizer_grpc.aserto.api.v1 import IdentityContext, IdentityType
-from aserto_authorizer_grpc.aserto.api.v1 import PolicyContext as PolicyContextField
-from aserto_authorizer_grpc.aserto.authorizer.authorizer.v1 import (
+import google.protobuf.struct_pb2 as structpb
+from aserto.authorizer.v2.api import (
+    IdentityContext,
+    PolicyContext,
+    IdentityType,
+)
+from aserto.authorizer.v2 import (
     AuthorizerStub,
     DecisionTreeOptions,
+    DecisionTreeRequest,
     DecisionTreeResponse,
     PathSeparator,
+    IsRequest,
 )
-from grpclib.client import Channel
-from grpclib.exceptions import StreamTerminatedError
+
+import grpc
+import grpc.aio as grpcaio
 from typing_extensions import Literal
 
 from ..._deadline import monotonic_time_from_deadline
@@ -37,33 +43,32 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
         self._authorizer = authorizer
         self._identity_context_field = IdentityContext(
             identity=identity.identity_field or "",
-            type=cast(IdentityType, IdentityType.from_string(identity.type_field)),
+            type=IdentityType.Value(identity.type_field),
         )
 
     @property
     def _headers(self) -> Mapping[str, str]:
         return self._authorizer.auth_headers
 
+    @property
+    def _metadata(self) -> grpcaio.Metadata:
+        return grpcaio.Metadata(*tuple(self._headers.items()))
+
     @asynccontextmanager  # type: ignore[misc]
     async def _authorizer_client(self, deadline: Optional[Union[datetime, timedelta]]) -> AsyncGenerator[AuthorizerStub, None]:  # type: ignore[misc]
         result = urlparse(self._authorizer.url)
-        channel = Channel(
-            host=result.hostname,
-            port=result.port,
-            ssl=self._authorizer.ssl_context or True,
+        channel = grpcaio.secure_channel(
+            target=f"{result.hostname}:{result.port}",
+            credentials=grpc.ssl_channel_credentials(self._authorizer.cert),
         )
 
         async with channel as channel:
-            yield AuthorizerStub(
-                channel,
-                metadata=self._headers,
-                timeout=(monotonic_time_from_deadline(deadline) if deadline is not None else None),
-            )
+            yield AuthorizerStub(channel)
 
     @staticmethod
     def _policy_path_separator_field(
         policy_path_separator: Literal["DOT", "SLASH"]
-    ) -> PathSeparator:
+    ) -> PathSeparator.ValueType:
         if policy_path_separator == "DOT":
             return PathSeparator.PATH_SEPARATOR_DOT
         elif policy_path_separator == "SLASH":
@@ -72,7 +77,7 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
             assert_unreachable(policy_path_separator)
 
     @classmethod
-    def _serialize_resource_context(cls, resource_context: object) -> Proto.Struct:
+    def _serialize_resource_context(cls, resource_context: object) -> structpb.Struct:
         try:
             json.dumps(resource_context)
         except ValueError as error:
@@ -85,28 +90,27 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
         return proto_value.struct_value
 
     @classmethod
-    def _serialize_resource_context_value(cls, resource_value: object) -> Proto.Value:
+    def _serialize_resource_context_value(cls, resource_value: object) -> structpb.Value:
         # `Mapping` is a subclass of `Collection` so this check must come first
         if isinstance(resource_value, Mapping):
-            struct_value = Proto.Struct()
-            for key, value in resource_value.items():
-                struct_value.fields[key] = cls._serialize_resource_context_value(value)
-            return Proto.Value(struct_value=struct_value)
+            struct_value = structpb.Struct()
+            struct_value.update(resource_value)
+            return structpb.Value(struct_value=struct_value)
         # `str` is a subclass of `Collection` so this check must come first
         elif isinstance(resource_value, str):
-            return Proto.Value(string_value=resource_value)
+            return structpb.Value(string_value=resource_value)
         elif isinstance(resource_value, Collection):
-            list_value = Proto.ListValue()
+            list_value = structpb.ListValue()
             for value in resource_value:
-                list_value.values.append(cls._serialize_resource_context_value(value))
-            return Proto.Value(list_value=list_value)
+                list_value.append(cls._serialize_resource_context_value(value))
+            return structpb.Value(list_value=list_value)
         # `bool` is subclass of `int` so this check must come first
         elif isinstance(resource_value, bool):
-            return Proto.Value(bool_value=resource_value)
+            return structpb.Value(bool_value=resource_value)
         elif isinstance(resource_value, (int, float)):
-            return Proto.Value(number_value=float(resource_value))
+            return structpb.Value(number_value=float(resource_value))
         elif resource_value is None:
-            return Proto.Value(null_value=Proto.NullValue.NULL_VALUE)
+            return structpb.Value(null_value=structpb.NullValue.NULL_VALUE)
         else:
             raise TypeError("Invalid resource context")
 
@@ -114,7 +118,7 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
         self,
         *,
         decisions: Collection[str],
-        policy_id: str,
+        policy_name: str,
         policy_path_root: str,
         resource_context: Optional[ResourceContext] = None,
         policy_path_separator: Optional[Literal["DOT", "SLASH"]] = None,
@@ -126,17 +130,21 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
 
         try:
             async with self._authorizer_client(deadline=deadline) as client:
-                response = await client.decision_tree(
-                    policy_context=PolicyContextField(
-                        id=policy_id,
-                        path=policy_path_root,
-                        decisions=list(decisions),
+                response = await client.DecisionTree(
+                    DecisionTreeRequest(
+                        policy_context=PolicyContext(
+                            name=policy_name,
+                            path=policy_path_root,
+                            decisions=list(decisions),
+                        ),
+                        identity_context=self._identity_context_field,
+                        resource_context=self._serialize_resource_context(resource_context or {}),
+                        options=options,
                     ),
-                    identity_context=self._identity_context_field,
-                    resource_context=self._serialize_resource_context(resource_context or {}),
-                    options=options,
+                    metadata=self._metadata,
+                    timeout=(monotonic_time_from_deadline(deadline) if deadline is not None else None),
                 )
-        except (OSError, StreamTerminatedError) as error:
+        except (OSError, grpc.RpcError) as error:
             raise ConnectionError(*error.args) from error  # type: ignore[misc]
 
         return self._validate_decision_tree(response)
@@ -148,11 +156,11 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
         decision_tree: DecisionTree = {}
 
         for path, decisions in response.path.fields.items():
-            if decisions._group_current.get("kind") != "struct_value":
+            if decisions.WhichOneof("kind") != "struct_value":
                 raise error
 
             for name, decision in decisions.struct_value.fields.items():
-                if decision._group_current.get("kind") != "bool_value":
+                if decision.WhichOneof("kind") != "bool_value":
                     raise error
 
                 decision_tree.setdefault(path, {})[name] = decision.bool_value
@@ -163,27 +171,31 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
         self,
         *,
         decisions: Collection[str],
-        policy_id: str,
+        policy_name: str,
         policy_path: str,
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
         try:
             async with self._authorizer_client(deadline=deadline) as client:
-                response = await client.is_(
-                    policy_context=PolicyContextField(
-                        id=policy_id,
-                        path=policy_path,
-                        decisions=list(decisions),
+                response = await client.Is(
+                    IsRequest(
+                        policy_context=PolicyContext(
+                            name=policy_name,
+                            path=policy_path,
+                            decisions=list(decisions),
+                        ),
+                        identity_context=self._identity_context_field,
+                        resource_context=self._serialize_resource_context(resource_context or {}),
                     ),
-                    identity_context=self._identity_context_field,
-                    resource_context=self._serialize_resource_context(resource_context or {}),
+                    metadata=self._metadata,
+                    timeout=(monotonic_time_from_deadline(deadline) if deadline is not None else None),
                 )
-        except (OSError, StreamTerminatedError) as error:
+        except (OSError, grpc.RpcError) as error:
             raise ConnectionError(*error.args) from error  # type: ignore[misc]
 
         results = {}
         for decision_object in response.decisions:
-            results[decision_object.decision] = decision_object.is_
+            results[decision_object.decision] = getattr(decision_object, "is")
 
         return results

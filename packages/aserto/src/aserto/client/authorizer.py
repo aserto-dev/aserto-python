@@ -27,6 +27,10 @@ class Authorizer(metaclass=ABCMeta):
         ...
 
     @property
+    def cert(self) -> Optional[bytes]:
+        return None
+
+    @property
     def ssl_context(self) -> Optional[ssl.SSLContext]:
         return None
 
@@ -106,5 +110,9 @@ class EdgeAuthorizer(Authorizer):
         return ssl.create_default_context(cafile=self._cert_file_path)
 
     @property
-    def cert_file_path(self) -> Optional[str]:
-        return self._cert_file_path
+    def cert(self) -> Optional[bytes]:
+        if self._cert_file_path is None:
+            return None
+
+        with open(self._cert_file_path, "rb") as f:
+            return f.read()

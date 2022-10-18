@@ -39,7 +39,7 @@ class AuthorizerClient(AuthorizerClientProtocol):
         self,
         *,
         decisions: Collection[str],
-        policy_id: str,
+        policy_name: str,
         policy_path_root: str,
         resource_context: Optional[ResourceContext] = None,
         policy_path_separator: Optional[Literal["DOT", "SLASH"]] = None,
@@ -47,7 +47,7 @@ class AuthorizerClient(AuthorizerClientProtocol):
     ) -> DecisionTree:
         return await self._client.decision_tree(
             decisions=decisions,
-            policy_id=policy_id,
+            policy_name=policy_name,
             policy_path_root=policy_path_root,
             resource_context=resource_context,
             policy_path_separator=policy_path_separator,
@@ -58,14 +58,14 @@ class AuthorizerClient(AuthorizerClientProtocol):
         self,
         *,
         decisions: Collection[str],
-        policy_id: str,
+        policy_name: str,
         policy_path: str,
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
         return await self._client.decisions(
             decisions=decisions,
-            policy_id=policy_id,
+            policy_name=policy_name,
             policy_path=policy_path,
             resource_context=resource_context,
             deadline=deadline,

@@ -9,7 +9,7 @@ from aiohttp import (
     ServerTimeoutError,
     TCPConnector,
 )
-from grpclib import GRPCError, Status
+from grpc import RpcError, Status
 from typing_extensions import Literal
 
 from ..._deadline import monotonic_time_from_deadline
@@ -73,7 +73,7 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
         self,
         *,
         decisions: Collection[str],
-        policy_id: str,
+        policy_name: str,
         policy_path_root: str,
         resource_context: Optional[ResourceContext] = None,
         policy_path_separator: Optional[Literal["DOT", "SLASH"]] = None,
@@ -85,7 +85,7 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
 
         body = {
             "policyContext": {
-                "id": policy_id,
+                "id": policy_name,
                 "path": policy_path_root,
                 "decisions": tuple(decisions),
             },
@@ -111,10 +111,10 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
     @staticmethod
     def _raise_if_server_error(response: Mapping[object, object]) -> None:
         if response.keys() == {"code", "message", "details"}:
-            raise GRPCError(
-                status=Status(response["code"]),
-                message=(str(response["message"]) if response["message"] is not None else None),
-                details=response["details"],
+            raise RpcError(
+                Status(response["code"]),
+                (str(response["message"]) if response["message"] is not None else None),
+                response["details"],
             )
 
     @classmethod
@@ -153,14 +153,14 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
         self,
         *,
         decisions: Collection[str],
-        policy_id: str,
+        policy_name: str,
         policy_path: str,
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
         body = {
             "policyContext": {
-                "id": policy_id,
+                "id": policy_name,
                 "path": policy_path,
                 "decisions": list(decisions),
             },

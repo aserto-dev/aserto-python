@@ -5,6 +5,10 @@ from unittest import mock
 
 __all__ = ["mock_rest_request", "mock_grpc_request"]
 
+class AsyncMock(mock.MagicMock):
+    async def __call__(self, *args, **kwargs):
+        return super(AsyncMock, self).__call__(*args, **kwargs)
+
 
 @contextmanager
 def mock_rest_request(response: object) -> Iterator[None]:
@@ -12,7 +16,7 @@ def mock_rest_request(response: object) -> Iterator[None]:
     mock_response.json.return_value = Future()
     mock_response.json.return_value.set_result(response)
 
-    with mock.patch("aiohttp.ClientSession._request") as mock_client_session_request:
+    with mock.patch("aiohttp.ClientSession._request", new_callable=AsyncMock) as mock_client_session_request:
         mock_client_session_request.return_value = mock_response
         yield
 
@@ -32,14 +36,14 @@ def mock_grpc_request(response: object) -> Iterator[None]:
     mock_stream.send_data.return_value = Future()
     mock_stream.send_data.return_value.set_result(None)
 
-    with mock.patch("grpclib.client.Channel.__connect__") as mock_channel_connect, mock.patch(
-        "grpclib.client.Stream.recv_message"
-    ) as mock_stream_recv_message:
-        mock_channel_connect.return_value = mock_protocol
-        mock_stream_recv_message.return_value = response
+    with mock.patch("grpc.aio.UnaryUnaryCall.__await__") as mock_channel_await: #, mock.patch(
+    #      "grpclib.client.Stream.recv_message"
+    #  ) as mock_stream_recv_message:
+        mock_channel_await.return_value = mock_protocol
+        #  mock_stream_recv_message.return_value = response
         yield
 
-    mock_channel_connect.assert_called()
+    #  mock_channel_connect.assert_called()
     mock_stream.send_request.assert_called()
     mock_stream.send_data.assert_called()
-    mock_stream_recv_message.assert_called()
+    #  mock_stream_recv_message.assert_called()
