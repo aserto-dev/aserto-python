@@ -14,7 +14,7 @@ from typing_extensions import Literal
 
 from ..._deadline import monotonic_time_from_deadline
 from ..._typing import assert_unreachable
-from ...authorizer import Authorizer
+from ...options import AuthorizerOptions
 from ...identity import Identity
 from ...resource_context import ResourceContext
 from ._protocol import AuthorizerClientProtocol, DecisionTree
@@ -25,9 +25,9 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
         self,
         *,
         identity: Identity,
-        authorizer: Authorizer,
+        options: AuthorizerOptions,
     ):
-        self._authorizer = authorizer
+        self._options = options
 
         self._identity_context_field: Mapping[str, str] = {
             "type": identity.type_field,
@@ -38,18 +38,18 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
 
     @property
     def _authorizer_api_url_base(self) -> str:
-        return f"{self._authorizer.url}/api/v1/authz"
+        return f"{self._options.url}/api/v1/authz"
 
     @property
     def _headers(self) -> Mapping[str, str]:
-        headers = {"Content-Type": "application/json", **self._authorizer.auth_headers}
+        headers = {"Content-Type": "application/json", **self._options.auth_headers}
 
         return headers
 
     def _authorizer_session(self, deadline: Optional[Union[datetime, timedelta]]) -> ClientSession:
         connector = None
-        if self._authorizer.ssl_context is not None:
-            connector = TCPConnector(ssl_context=self._authorizer.ssl_context)
+        if self._options.ssl_context is not None:
+            connector = TCPConnector(ssl_context=self._options.ssl_context)
 
         return ClientSession(
             connector=connector,

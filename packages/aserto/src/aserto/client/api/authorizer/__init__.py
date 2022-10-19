@@ -4,7 +4,7 @@ from typing import Collection, Dict, Optional, Union
 from typing_extensions import Literal
 
 from ..._typing import assert_unreachable
-from ...authorizer import Authorizer
+from ...options import AuthorizerOptions
 from ...identity import Identity
 from ...resource_context import ResourceContext
 from ._protocol import AuthorizerClientProtocol, DecisionTree
@@ -19,18 +19,18 @@ class AuthorizerClient(AuthorizerClientProtocol):
         self,
         *,
         identity: Identity,
-        authorizer: Authorizer,
+        options: AuthorizerOptions,
     ):
-        service_type = authorizer.service_type
+        service_type = options.service_type
         if service_type == "gRPC":
             self._client: AuthorizerClientProtocol = AuthorizerGrpcClient(
                 identity=identity,
-                authorizer=authorizer,
+                options=options,
             )
         elif service_type == "REST":
             self._client = AuthorizerRestClient(
                 identity=identity,
-                authorizer=authorizer,
+                options=options,
             )
         else:
             assert_unreachable(service_type)

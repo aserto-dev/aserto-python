@@ -10,7 +10,7 @@ from aserto.authorizer.v2 import (
 )
 from typing_extensions import Literal
 
-from aserto.client import HostedAuthorizer, Identity
+from aserto.client import AuthorizerOptions, Identity
 from aserto.client.api.authorizer import AuthorizerClient, DecisionTree
 
 from .mock import mock_grpc_request, mock_rest_request
@@ -19,7 +19,7 @@ from .mock import mock_grpc_request, mock_rest_request
 def create_client(service_type: Literal["gRPC", "REST"]) -> AuthorizerClient:
     return AuthorizerClient(
         identity=Identity(type="NONE"),
-        authorizer=HostedAuthorizer(
+        options=AuthorizerOptions(
             url="https://aserto.test",
             api_key="API-KEY",
             tenant_id="TENANT-ID",

@@ -25,7 +25,7 @@ from typing_extensions import Literal
 
 from ..._deadline import monotonic_time_from_deadline
 from ..._typing import assert_unreachable
-from ...authorizer import Authorizer
+from ...options import AuthorizerOptions
 from ...identity import Identity
 from ...resource_context import ResourceContext
 from ._protocol import AuthorizerClientProtocol, DecisionTree
@@ -37,10 +37,10 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
         *,
         tenant_id: Optional[str] = None,
         identity: Identity,
-        authorizer: Authorizer,
+        options: AuthorizerOptions,
     ):
         self._tenant_id = tenant_id
-        self._authorizer = authorizer
+        self._authorizer = options
         self._identity_context_field = IdentityContext(
             identity=identity.identity_field or "",
             type=IdentityType.Value(identity.type_field),
