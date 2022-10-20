@@ -28,7 +28,8 @@ client = AuthorizerClient(
 
 result = await client.decision_tree(
     decisions=["visible", "enabled", "allowed"],
-    policy_name=ASERTO_POLICY_NAME,
+    policy_instance_name=ASERTO_POLICY_INSTANCE_NAME,
+    policy_instance_label=ASERTO_POLICY_INSTANCE_LABEL,
     policy_path_root=ASERTO_POLICY_PATH_ROOT,
     policy_path_separator="DOT",
 )

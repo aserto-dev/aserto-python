@@ -175,9 +175,10 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
     async def decisions(
         self,
         *,
-        decisions: Collection[str],
-        policy_name: str,
         policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
@@ -186,12 +187,15 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
                 response = await client.Is(
                     IsRequest(
                         policy_context=PolicyContext(
-                            name=policy_name,
                             path=policy_path,
                             decisions=list(decisions),
                         ),
                         identity_context=self._identity_context_field,
                         resource_context=self._serialize_resource_context(resource_context or {}),
+                        policy_instance=PolicyInstance(
+                            name=policy_instance_name,
+                            instance_label=policy_instance_label,
+                        ),
                     ),
                     metadata=self._metadata,
                     timeout=(monotonic_time_from_deadline(deadline) if deadline is not None else None),
