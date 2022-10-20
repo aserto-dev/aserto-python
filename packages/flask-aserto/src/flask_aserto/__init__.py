@@ -3,9 +3,8 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, cast, overload
 
-from aserto.client import Identity, ResourceContext
+from aserto.client import AuthorizerOptions, Identity, ResourceContext
 from aserto.client.api.authorizer import AuthorizerClient
-from aserto.client.authorizer import Authorizer
 from flask import Flask, jsonify
 from flask.wrappers import Response
 
@@ -33,14 +32,14 @@ class AsertoMiddleware:
     def __init__(
         self,
         *,
-        authorizer: Authorizer,
+        authorizer_options: AuthorizerOptions,
         policy_name: str,
         policy_path_root: str,
         identity_provider: MaybeAsyncCallback[Identity],
         policy_path_resolver: Optional[MaybeAsyncCallback[str]] = None,
         resource_context_provider: Optional[MaybeAsyncCallback[ResourceContext]] = None,
     ):
-        self._authorizer = authorizer
+        self._authorizer_options = authorizer_options
         self._identity_provider = identity_provider
         self._policy_name = policy_name
         self._policy_path_root = policy_path_root
@@ -61,7 +60,7 @@ class AsertoMiddleware:
         identity = await maybe_await(self._identity_provider())
 
         return AuthorizerClient(
-            authorizer=self._authorizer,
+            authorizer=self._authorizer_options,
             identity=identity,
         )
 
@@ -70,7 +69,7 @@ class AsertoMiddleware:
             self
             if not kwargs
             else AsertoMiddleware(
-                authorizer=kwargs.get("authorizer", self._authorizer),
+                authorizer_options=kwargs.get("authorizer", self._authorizer_options),
                 identity_provider=kwargs.get("identity_provider", self._identity_provider),
                 policy_name=kwargs.get("policy_name", self._policy_name),
                 policy_path_root=kwargs.get("policy_path_root", self._policy_path_root),
@@ -90,7 +89,7 @@ class AsertoMiddleware:
         self,
         decision: str,
         *,
-        authorizer: Authorizer = ...,
+        authorizer_options: AuthorizerOptions = ...,
         identity_provider: MaybeAsyncCallback[Identity] = ...,
         policy_name: str = ...,
         policy_path_root: str = ...,
@@ -124,7 +123,7 @@ class AsertoMiddleware:
     def authorize(
         self,
         *,
-        authorizer: Authorizer = ...,
+        authorizer_options: AuthorizerOptions = ...,
         identity_provider: MaybeAsyncCallback[Identity] = ...,
         policy_name: str = ...,
         policy_path_root: str = ...,
