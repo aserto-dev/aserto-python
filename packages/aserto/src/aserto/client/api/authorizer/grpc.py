@@ -9,6 +9,7 @@ from aserto.authorizer.v2.api import (
     IdentityContext,
     PolicyContext,
     IdentityType,
+    PolicyInstance,
 )
 from aserto.authorizer.v2 import (
     AuthorizerStub,
@@ -40,7 +41,7 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
         options: AuthorizerOptions,
     ):
         self._tenant_id = tenant_id
-        self._authorizer = options
+        self._options = options
         self._identity_context_field = IdentityContext(
             identity=identity.identity_field or "",
             type=IdentityType.Value(identity.type_field),
@@ -48,7 +49,7 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
 
     @property
     def _headers(self) -> Mapping[str, str]:
-        return self._authorizer.auth_headers
+        return self._options.auth_headers
 
     @property
     def _metadata(self) -> grpcaio.Metadata:
@@ -56,10 +57,10 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
 
     @asynccontextmanager  # type: ignore[misc]
     async def _authorizer_client(self, deadline: Optional[Union[datetime, timedelta]]) -> AsyncGenerator[AuthorizerStub, None]:  # type: ignore[misc]
-        result = urlparse(self._authorizer.url)
+        result = urlparse(self._options.url)
         channel = grpcaio.secure_channel(
             target=f"{result.hostname}:{result.port}",
-            credentials=grpc.ssl_channel_credentials(self._authorizer.cert),
+            credentials=grpc.ssl_channel_credentials(self._options.cert),
         )
 
         async with channel as channel:
@@ -117,9 +118,10 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
     async def decision_tree(
         self,
         *,
-        decisions: Collection[str],
-        policy_name: str,
         policy_path_root: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         policy_path_separator: Optional[Literal["DOT", "SLASH"]] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
@@ -133,13 +135,16 @@ class AuthorizerGrpcClient(AuthorizerClientProtocol):
                 response = await client.DecisionTree(
                     DecisionTreeRequest(
                         policy_context=PolicyContext(
-                            name=policy_name,
                             path=policy_path_root,
                             decisions=list(decisions),
                         ),
                         identity_context=self._identity_context_field,
                         resource_context=self._serialize_resource_context(resource_context or {}),
                         options=options,
+                        policy_instance=PolicyInstance(
+                            name=policy_instance_name,
+                            instance_label=policy_instance_label,
+                        ),
                     ),
                     metadata=self._metadata,
                     timeout=(monotonic_time_from_deadline(deadline) if deadline is not None else None),

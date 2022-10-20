@@ -31,7 +31,7 @@ def create_client(service_type: Literal["gRPC", "REST"]) -> AuthorizerClient:
 async def make_decision_tree_request(client: AuthorizerClient) -> DecisionTree:
     return await client.decision_tree(
         decisions=["enabled", "allowed"],
-        policy_name="POLICY-NAME",
+        policy_instance_name="POLICY-NAME",
         policy_path_root="policy_root",
     )
 
@@ -39,7 +39,7 @@ async def make_decision_tree_request(client: AuthorizerClient) -> DecisionTree:
 async def make_decision_request(client: AuthorizerClient) -> Dict[str, bool]:
     return await client.decisions(
         decisions=["visible", "enabled", "allowed"],
-        policy_name="POLICY-NAME",
+        policy_instance_name="POLICY-NAME",
         policy_path="policy_root.GET.user__id",
         resource_context={"id": "USER-ID"},
     )

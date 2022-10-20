@@ -38,17 +38,19 @@ class AuthorizerClient(AuthorizerClientProtocol):
     async def decision_tree(
         self,
         *,
-        decisions: Collection[str],
-        policy_name: str,
         policy_path_root: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         policy_path_separator: Optional[Literal["DOT", "SLASH"]] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> DecisionTree:
         return await self._client.decision_tree(
-            decisions=decisions,
-            policy_name=policy_name,
             policy_path_root=policy_path_root,
+            decisions=decisions,
+            policy_instance_name=policy_instance_name,
+            policy_instance_label=policy_instance_label,
             resource_context=resource_context,
             policy_path_separator=policy_path_separator,
             deadline=deadline,
@@ -57,16 +59,18 @@ class AuthorizerClient(AuthorizerClientProtocol):
     async def decisions(
         self,
         *,
-        decisions: Collection[str],
-        policy_name: str,
         policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
         return await self._client.decisions(
-            decisions=decisions,
-            policy_name=policy_name,
             policy_path=policy_path,
+            decisions=decisions,
+            policy_instance_name=policy_instance_name,
+            policy_instance_label=policy_instance_label,
             resource_context=resource_context,
             deadline=deadline,
         )

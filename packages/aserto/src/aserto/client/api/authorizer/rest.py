@@ -72,9 +72,10 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
     async def decision_tree(
         self,
         *,
-        decisions: Collection[str],
-        policy_name: str,
         policy_path_root: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         policy_path_separator: Optional[Literal["DOT", "SLASH"]] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
@@ -85,13 +86,16 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
 
         body = {
             "policyContext": {
-                "id": policy_name,
                 "path": policy_path_root,
                 "decisions": tuple(decisions),
             },
             "identityContext": self._identity_context_field,
             "resourceContext": resource_context,
             "options": options,
+            "policyInstance": {
+                "name": policy_instance_name,
+                "instanceLabel": policy_instance_label,
+            },
         }
 
         async with self._authorizer_session(deadline=deadline) as session:
@@ -152,20 +156,24 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
     async def decisions(
         self,
         *,
-        decisions: Collection[str],
-        policy_name: str,
         policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
         body = {
             "policyContext": {
-                "id": policy_name,
                 "path": policy_path,
                 "decisions": list(decisions),
             },
             "identityContext": self._identity_context_field,
             "resourceContext": resource_context,
+            "policyInstance": {
+                "name": policy_instance_name,
+                "instanceLabel": policy_instance_label,
+            },
         }
 
         async with self._authorizer_session(deadline=deadline) as session:
