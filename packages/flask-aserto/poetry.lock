@@ -41,7 +41,7 @@ python-versions = "*"
 
 [[package]]
 name = "aserto"
-version = "0.3.0rc1"
+version = "0.3.0rc3"
 description = "Aserto API client"
 category = "main"
 optional = false
@@ -710,7 +710,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "flake8 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "5ac1c411d2c0db02f57b4ee24f7dd5504ba143ab28e3a3c4459f57018cc2cf71"
+content-hash = "332c12af9fa0d79d7b11bcb87922b6303c8cd1aef61f03256babfafba1b2f0c7"
 
 [metadata.files]
 aiohttp = []
