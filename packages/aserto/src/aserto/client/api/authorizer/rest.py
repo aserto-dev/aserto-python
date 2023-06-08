@@ -9,12 +9,12 @@ from aiohttp import (
     ServerTimeoutError,
     TCPConnector,
 )
-from grpclib import GRPCError, Status
+from grpc import RpcError, Status
 from typing_extensions import Literal
 
 from ..._deadline import monotonic_time_from_deadline
 from ..._typing import assert_unreachable
-from ...authorizer import Authorizer
+from ...options import AuthorizerOptions
 from ...identity import Identity
 from ...resource_context import ResourceContext
 from ._protocol import AuthorizerClientProtocol, DecisionTree
@@ -25,9 +25,9 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
         self,
         *,
         identity: Identity,
-        authorizer: Authorizer,
+        options: AuthorizerOptions,
     ):
-        self._authorizer = authorizer
+        self._options = options
 
         self._identity_context_field: Mapping[str, str] = {
             "type": identity.type_field,
@@ -38,18 +38,18 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
 
     @property
     def _authorizer_api_url_base(self) -> str:
-        return f"{self._authorizer.url}/api/v1/authz"
+        return f"{self._options.url}/api/v1/authz"
 
     @property
     def _headers(self) -> Mapping[str, str]:
-        headers = {"Content-Type": "application/json", **self._authorizer.auth_headers}
+        headers = {"Content-Type": "application/json", **self._options.auth_headers}
 
         return headers
 
     def _authorizer_session(self, deadline: Optional[Union[datetime, timedelta]]) -> ClientSession:
         connector = None
-        if self._authorizer.ssl_context is not None:
-            connector = TCPConnector(ssl_context=self._authorizer.ssl_context)
+        if self._options.ssl_context is not None:
+            connector = TCPConnector(ssl_context=self._options.ssl_context)
 
         return ClientSession(
             connector=connector,
@@ -72,9 +72,10 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
     async def decision_tree(
         self,
         *,
-        decisions: Collection[str],
-        policy_id: str,
         policy_path_root: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         policy_path_separator: Optional[Literal["DOT", "SLASH"]] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
@@ -85,13 +86,16 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
 
         body = {
             "policyContext": {
-                "id": policy_id,
                 "path": policy_path_root,
                 "decisions": tuple(decisions),
             },
             "identityContext": self._identity_context_field,
             "resourceContext": resource_context,
             "options": options,
+            "policyInstance": {
+                "name": policy_instance_name,
+                "instanceLabel": policy_instance_label,
+            },
         }
 
         async with self._authorizer_session(deadline=deadline) as session:
@@ -111,10 +115,10 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
     @staticmethod
     def _raise_if_server_error(response: Mapping[object, object]) -> None:
         if response.keys() == {"code", "message", "details"}:
-            raise GRPCError(
-                status=Status(response["code"]),
-                message=(str(response["message"]) if response["message"] is not None else None),
-                details=response["details"],
+            raise RpcError(
+                Status(response["code"]),
+                (str(response["message"]) if response["message"] is not None else None),
+                response["details"],
             )
 
     @classmethod
@@ -152,20 +156,24 @@ class AuthorizerRestClient(AuthorizerClientProtocol):
     async def decisions(
         self,
         *,
-        decisions: Collection[str],
-        policy_id: str,
         policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
         body = {
             "policyContext": {
-                "id": policy_id,
                 "path": policy_path,
                 "decisions": list(decisions),
             },
             "identityContext": self._identity_context_field,
             "resourceContext": resource_context,
+            "policyInstance": {
+                "name": policy_instance_name,
+                "instanceLabel": policy_instance_label,
+            },
         }
 
         async with self._authorizer_session(deadline=deadline) as session:

@@ -18,9 +18,10 @@ class AuthorizerClientProtocol(Protocol):
     async def decision_tree(
         self,
         *,
-        decisions: Collection[str],
-        policy_id: str,
         policy_path_root: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         policy_path_separator: Optional[Literal["DOT", "SLASH"]] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
@@ -30,9 +31,10 @@ class AuthorizerClientProtocol(Protocol):
     async def decisions(
         self,
         *,
-        decisions: Collection[str],
-        policy_id: str,
         policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:

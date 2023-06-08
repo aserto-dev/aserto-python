@@ -3,9 +3,8 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, cast, overload
 
-from aserto import Identity, ResourceContext
-from aserto.api.authorizer import AuthorizerClient
-from aserto.authorizer import Authorizer
+from aserto.client import AuthorizerOptions, Identity, ResourceContext
+from aserto.client.api.authorizer import AuthorizerClient
 from flask import Flask, jsonify
 from flask.wrappers import Response
 
@@ -22,7 +21,7 @@ __all__ = ["AsertoMiddleware", "AuthorizationError"]
 
 @dataclass(frozen=True)
 class AuthorizationError(Exception):
-    policy_id: str
+    policy_instance_name: str
     policy_path: str
 
 
@@ -33,16 +32,18 @@ class AsertoMiddleware:
     def __init__(
         self,
         *,
-        authorizer: Authorizer,
-        policy_id: str,
+        authorizer_options: AuthorizerOptions,
         policy_path_root: str,
         identity_provider: MaybeAsyncCallback[Identity],
+        policy_instance_name: Optional[str]= None,
+        policy_instance_label: Optional[str]= None,
         policy_path_resolver: Optional[MaybeAsyncCallback[str]] = None,
         resource_context_provider: Optional[MaybeAsyncCallback[ResourceContext]] = None,
     ):
-        self._authorizer = authorizer
+        self._authorizer_options = authorizer_options
         self._identity_provider = identity_provider
-        self._policy_id = policy_id
+        self._policy_instance_name = policy_instance_name
+        self._policy_instance_label = policy_instance_label
         self._policy_path_root = policy_path_root
 
         self._policy_path_resolver = (
@@ -61,8 +62,8 @@ class AsertoMiddleware:
         identity = await maybe_await(self._identity_provider())
 
         return AuthorizerClient(
-            authorizer=self._authorizer,
             identity=identity,
+            options=self._authorizer_options,
         )
 
     def _with_overrides(self, **kwargs: Any) -> "AsertoMiddleware":
@@ -70,10 +71,11 @@ class AsertoMiddleware:
             self
             if not kwargs
             else AsertoMiddleware(
-                authorizer=kwargs.get("authorizer", self._authorizer),
-                identity_provider=kwargs.get("identity_provider", self._identity_provider),
-                policy_id=kwargs.get("policy_id", self._policy_id),
+                authorizer_options=kwargs.get("authorizer", self._authorizer_options),
                 policy_path_root=kwargs.get("policy_path_root", self._policy_path_root),
+                identity_provider=kwargs.get("identity_provider", self._identity_provider),
+                policy_instance_name=kwargs.get("policy_instance_name", self._policy_instance_name),
+                policy_instance_label=kwargs.get("policy_instance_label", self._policy_instance_label),
                 policy_path_resolver=kwargs.get("policy_path_resolver", self._policy_path_resolver),
                 resource_context_provider=kwargs.get(
                     "resource_context_provider", self._resource_context_provider
@@ -90,9 +92,10 @@ class AsertoMiddleware:
         self,
         decision: str,
         *,
-        authorizer: Authorizer = ...,
+        authorizer_options: AuthorizerOptions = ...,
         identity_provider: MaybeAsyncCallback[Identity] = ...,
-        policy_id: str = ...,
+        policy_instance_name: str = ...,
+        policy_instance_label: str = ...,
         policy_path_root: str = ...,
         policy_path_resolver: MaybeAsyncCallback[str] = ...,
         resource_context_provider: MaybeAsyncCallback[ResourceContext] = ...,
@@ -109,9 +112,10 @@ class AsertoMiddleware:
             maybe_await(self._policy_path_resolver()),
         )
         decisions = await client.decisions(
-            decisions=(decision,),
-            policy_id=self._policy_id,
             policy_path=policy_path,
+            decisions=(decision,),
+            policy_instance_name=self._policy_instance_name,
+            policy_instance_label=self._policy_instance_label,
             resource_context=resource_context,
         )
         return decisions[decision]
@@ -124,9 +128,10 @@ class AsertoMiddleware:
     def authorize(
         self,
         *,
-        authorizer: Authorizer = ...,
+        authorizer_options: AuthorizerOptions = ...,
         identity_provider: MaybeAsyncCallback[Identity] = ...,
-        policy_id: str = ...,
+        policy_instance_name: str = ...,
+        policy_instance_label: str = ...,
         policy_path_root: str = ...,
         policy_path_resolver: MaybeAsyncCallback[str] = ...,
     ) -> Callable[[Handler], Handler]:
@@ -169,14 +174,15 @@ class AsertoMiddleware:
             )
 
             decisions = await client.decisions(
-                decisions=("allowed",),
-                policy_id=self._policy_id,
                 policy_path=policy_path,
+                decisions=("allowed",),
+                policy_instance_name=self._policy_instance_name,
+                policy_instance_label=self._policy_instance_label,
                 resource_context=resource_context,
             )
 
             if not decisions["allowed"]:
-                raise AuthorizationError(policy_id=self._policy_id, policy_path=policy_path)
+                raise AuthorizationError(policy_instance_name=self._policy_instance_name, policy_path=policy_path)
 
             return await maybe_await(handler(*args, **kwargs))
 
@@ -201,9 +207,10 @@ class AsertoMiddleware:
             )
 
             display_state_map = await client.decision_tree(
-                decisions=["visible", "enabled"],
-                policy_id=self._policy_id,
                 policy_path_root=self._policy_path_root,
+                decisions=["visible", "enabled"],
+                policy_instance_name=self._policy_instance_name,
+                policy_instance_label=self._policy_instance_label,
                 resource_context=resource_context,
                 policy_path_separator="SLASH",
             )
