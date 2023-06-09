@@ -4,6 +4,8 @@ import grpc
 
 from aserto.directory.reader.v2 import ReaderStub
 from aserto.directory.writer.v2 import WriterStub
+from aserto.directory.importer.v2 import ImporterStub
+from aserto.directory.exporter.v2 import ExporterStub
 
 class Directory:
     def __init__(self, config) -> None:
@@ -11,6 +13,8 @@ class Directory:
         self._channel = grpc.secure_channel(target=self._config["address"], credentials=self._channel_credentials())
         self.reader = ReaderStub(self._channel)
         self.writer = WriterStub(self._channel)
+        self.importer = ImporterStub(self._channel)
+        self.exporter = ExporterStub(self._channel)
 
     def _metadata(self) -> Tuple:
         md = ()
