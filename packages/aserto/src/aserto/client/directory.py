@@ -8,8 +8,8 @@ from aserto.directory.importer.v2 import ImporterStub
 from aserto.directory.exporter.v2 import ExporterStub
 
 class Directory:
-    def __init__(self, config) -> None:
-        self._config = config
+    def __init__(self, *, address: str, api_key: str, tenant_id: str, ca_cert: str) -> None:
+        self._config = { "address": address, "api_key": api_key, "tenant_id": tenant_id, "cert": ca_cert }
         self._channel = grpc.secure_channel(target=self._config["address"], credentials=self._channel_credentials())
         self.reader = ReaderStub(self._channel)
         self.writer = WriterStub(self._channel)
