@@ -2,7 +2,8 @@ from typing import Tuple
 
 import grpc
 
-from aserto.directory.reader.v2 import ReaderStub
+from aserto.directory.common.v2 import ObjectIdentifier, ObjectIdentifier, Object, Relation, RelationIdentifier, RelationTypeIdentifier
+from aserto.directory.reader.v2 import ReaderStub, GetObjectRequest, GetRelationRequest
 from aserto.directory.writer.v2 import WriterStub
 from aserto.directory.importer.v2 import ImporterStub
 from aserto.directory.exporter.v2 import ExporterStub
@@ -15,6 +16,21 @@ class Directory:
         self.writer = WriterStub(self._channel)
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
+    
+    def get_object(self, key: str, type:str) -> Object:
+        identifier = ObjectIdentifier(type=type, key=key)
+        response = self.reader.GetObject(GetObjectRequest(param=identifier))
+        return response["result"]
+    
+    def get_relation(self, subject_type: str, subject_key: str, object_type: str, object_key: str, relation_type: str) -> Relation:
+        subject_identifier = ObjectIdentifier(type=subject_type, key=subject_key)
+        object_identifier = ObjectIdentifier(type=object_type, key=object_key)
+
+        relation_type_identifier = RelationTypeIdentifier(name=relation_type, object_type=object_type)
+
+        relation_identifier = RelationIdentifier(object=object_identifier, subject=subject_identifier, relation=relation_type_identifier)
+        response = self.reader.GetRelation(GetRelationRequest(param=relation_identifier))
+        return response["results"]
 
     def _metadata(self) -> Tuple:
         md = ()
