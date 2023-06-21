@@ -161,6 +161,9 @@ class Directory:
         )
         return response["check"]
 
+    def close_channel(self) -> None:
+        self._channel.close()
+
     def _metadata(self) -> Tuple:
         md = ()
         if self._config["api_key"]:
