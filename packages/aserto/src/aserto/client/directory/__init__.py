@@ -49,10 +49,10 @@ class Directory:
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
 
-    def get_objects(self, name: str, size: int, token: str) -> GetObjectsResponse:
-        identifier = ObjectTypeIdentifier(name=name)
-        pagination = PaginationRequest(size=size, token=token)
-        response = self.reader.GetObjects(GetObjectsRequest(param=identifier, page=pagination))
+    def get_objects(self, name: str, page: PaginationRequest) -> GetObjectsResponse:
+        response = self.reader.GetObjects(
+            GetObjectsRequest(param=ObjectTypeIdentifier(name=name), page=PaginationRequest(page))
+        )
         return response
 
     def get_object(self, key: str, type: str) -> Object:
@@ -75,22 +75,17 @@ class Directory:
         object_type: str,
         object_key: str,
         relation_type: str,
-        size: int,
-        token: str,
+        page: PaginationRequest,
     ) -> GetRelationsResponse:
-        subject_identifier = ObjectIdentifier(type=subject_type, key=subject_key)
-        object_identifier = ObjectIdentifier(type=object_type, key=object_key)
-
-        relation_type_identifier = RelationTypeIdentifier(
-            name=relation_type, object_type=object_type
-        )
-
-        relation_identifier = RelationIdentifier(
-            object=object_identifier, subject=subject_identifier, relation=relation_type_identifier
-        )
-        pagination = PaginationRequest(size=size, token=token)
         response = self.reader.GetRelations(
-            GetRelationsRequest(param=relation_identifier, page=pagination)
+            GetRelationsRequest(
+                param=RelationIdentifier(
+                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+                ),
+                page=PaginationRequest(page),
+            )
         )
         return response
 
@@ -102,17 +97,15 @@ class Directory:
         object_key: str,
         relation_type: str,
     ) -> Relation:
-        subject_identifier = ObjectIdentifier(type=subject_type, key=subject_key)
-        object_identifier = ObjectIdentifier(type=object_type, key=object_key)
-
-        relation_type_identifier = RelationTypeIdentifier(
-            name=relation_type, object_type=object_type
+        response = self.reader.GetRelation(
+            GetRelationRequest(
+                param=RelationIdentifier(
+                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+                )
+            )
         )
-
-        relation_identifier = RelationIdentifier(
-            object=object_identifier, subject=subject_identifier, relation=relation_type_identifier
-        )
-        response = self.reader.GetRelation(GetRelationRequest(param=relation_identifier))
         return response["results"]
 
     def set_relation(self, relation: Relation) -> Relation:
@@ -127,15 +120,10 @@ class Directory:
         object_key: str,
         relation_type: str,
     ) -> None:
-        subject_identifier = ObjectIdentifier(type=subject_type, key=subject_key)
-        object_identifier = ObjectIdentifier(type=object_type, key=object_key)
-
-        relation_type_identifier = RelationTypeIdentifier(
-            name=relation_type, object_type=object_type
-        )
-
         relation_identifier = RelationIdentifier(
-            object=object_identifier, subject=subject_identifier, relation=relation_type_identifier
+            object=ObjectIdentifier(type=object_type, key=object_key),
+            subject=ObjectIdentifier(type=subject_type, key=subject_key),
+            relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
         )
         self.writer.DeleteRelation(DeleteRelationRequest(param=relation_identifier))
 
@@ -147,18 +135,11 @@ class Directory:
         object_key: str,
         relation_type: str,
     ) -> bool:
-        subject_identifier = ObjectIdentifier(type=subject_type, key=subject_key)
-        object_identifier = ObjectIdentifier(type=object_type, key=object_key)
-
-        relation_type_identifier = RelationTypeIdentifier(
-            name=relation_type, object_type=object_type
-        )
-
         response = self.reader.CheckRelation(
             CheckRelationRequest(
-                object=object_identifier,
-                subject=subject_identifier,
-                relation=relation_type_identifier,
+                object=ObjectIdentifier(type=object_type, key=object_key),
+                subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
             )
         )
         return response["check"]
@@ -171,16 +152,11 @@ class Directory:
         object_key: str,
         permission: str,
     ) -> bool:
-        subject_identifier = ObjectIdentifier(type=subject_type, key=subject_key)
-        object_identifier = ObjectIdentifier(type=object_type, key=object_key)
-
-        permission_identifier = PermissionIdentifier(name=permission)
-
         response = self.reader.CheckPermission(
             CheckPermissionRequest(
-                object=object_identifier,
-                subject=subject_identifier,
-                permission=permission_identifier,
+                object=ObjectIdentifier(type=object_type, key=object_key),
+                subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                permission=PermissionIdentifier(name=permission),
             )
         )
         return response["check"]
