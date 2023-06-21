@@ -1,36 +1,36 @@
 from typing import Tuple
 
 import grpc
-
 from aserto.directory.common.v2 import (
+    Object,
     ObjectIdentifier,
     ObjectTypeIdentifier,
-    Object,
+    PaginationRequest,
+    PermissionIdentifier,
     Relation,
     RelationIdentifier,
     RelationTypeIdentifier,
-    PermissionIdentifier,
-    PaginationRequest,
 )
+from aserto.directory.exporter.v2 import ExporterStub
+from aserto.directory.importer.v2 import ImporterStub
 from aserto.directory.reader.v2 import (
-    ReaderStub,
+    CheckPermissionRequest,
+    CheckRelationRequest,
     GetObjectRequest,
     GetObjectsRequest,
     GetObjectsResponse,
     GetRelationRequest,
+    GetRelationsRequest,
     GetRelationsResponse,
-    CheckRelationRequest,
-    CheckPermissionRequest,
+    ReaderStub,
 )
 from aserto.directory.writer.v2 import (
-    WriterStub,
-    SetObjectRequest,
-    SetRelationRequest,
     DeleteObjectRequest,
     DeleteRelationRequest,
+    SetObjectRequest,
+    SetRelationRequest,
+    WriterStub,
 )
-from aserto.directory.importer.v2 import ImporterStub
-from aserto.directory.exporter.v2 import ExporterStub
 
 
 class Directory:
@@ -64,10 +64,9 @@ class Directory:
         response = self.writer.SetObject(SetObjectRequest(object=object))
         return response["result"]
 
-    def delete_object(self, key: str, type: str):
+    def delete_object(self, key: str, type: str) -> None:
         identifier = ObjectIdentifier(type=type, key=key)
-        response = self.writer.DeleteObject(DeleteObjectRequest(param=identifier))
-        return response["result"]
+        self.writer.DeleteObject(DeleteObjectRequest(param=identifier))
 
     def get_relations(
         self,
@@ -90,8 +89,8 @@ class Directory:
             object=object_identifier, subject=subject_identifier, relation=relation_type_identifier
         )
         pagination = PaginationRequest(size=size, token=token)
-        response = self.reader.GetObjects(
-            GetObjectsRequest(param=relation_identifier, page=pagination)
+        response = self.reader.GetRelations(
+            GetRelationsRequest(param=relation_identifier, page=pagination)
         )
         return response
 
@@ -127,7 +126,7 @@ class Directory:
         object_type: str,
         object_key: str,
         relation_type: str,
-    ):
+    ) -> None:
         subject_identifier = ObjectIdentifier(type=subject_type, key=subject_key)
         object_identifier = ObjectIdentifier(type=object_type, key=object_key)
 
@@ -138,8 +137,7 @@ class Directory:
         relation_identifier = RelationIdentifier(
             object=object_identifier, subject=subject_identifier, relation=relation_type_identifier
         )
-        response = self.writer.DeleteObject(DeleteRelationRequest(param=relation_identifier))
-        return response["result"]
+        self.writer.DeleteRelation(DeleteRelationRequest(param=relation_identifier))
 
     def check_relation(
         self,
