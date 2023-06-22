@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Tuple
 
 import grpc
@@ -33,16 +34,19 @@ from aserto.directory.writer.v2 import (
 )
 
 
+@dataclass(frozen=True)
+class Config:
+    address: str
+    api_key: str
+    tenant_id: str
+    cert: str
+
+
 class Directory:
     def __init__(self, *, address: str, api_key: str, tenant_id: str, ca_cert: str) -> None:
-        self._config = {
-            "address": address,
-            "api_key": api_key,
-            "tenant_id": tenant_id,
-            "cert": ca_cert,
-        }
+        self._config = Config(address=address, api_key=api_key, tenant_id=tenant_id, cert=ca_cert)
         self._channel = grpc.secure_channel(
-            target=self._config["address"], credentials=self._channel_credentials()
+            target=self._config.address, credentials=self._channel_credentials()
         )
         self.reader = ReaderStub(self._channel)
         self.writer = WriterStub(self._channel)
@@ -166,15 +170,15 @@ class Directory:
 
     def _metadata(self) -> Tuple:
         md = ()
-        if self._config["api_key"]:
-            md += (("authorization", f"basic {self._config['api_key']}"),)
-        if self._config["tenant_id"]:
-            md += (("aserto-tenant-id", self._config["tenant_id"]),)
+        if self._config.api_key:
+            md += (("authorization", f"basic {self._config.api_key}"),)
+        if self._config.tenant_id:
+            md += (("aserto-tenant-id", self._config.tenant_id),)
         return md
 
     def _channel_credentials(self) -> grpc.ChannelCredentials:
-        if self._config["cert"]:
-            with open(self._config["cert"], "rb") as f:
+        if self._config.cert:
+            with open(self._config.cert, "rb") as f:
                 return grpc.ssl_channel_credentials(f.read())
         else:
             return grpc.ssl_channel_credentials()
