@@ -34,52 +34,49 @@ from aserto.directory.writer.v2 import (
 )
 
 
-@dataclass(frozen=True)
-class Config:
-    address: str
-    api_key: str
-    tenant_id: str
-    cert: str
-
-
 class Directory:
     def __init__(self, *, address: str, api_key: str, tenant_id: str, ca_cert: str) -> None:
-        self._config = Config(address=address, api_key=api_key, tenant_id=tenant_id, cert=ca_cert)
         self._channel = grpc.secure_channel(
-            target=self._config.address, credentials=self._channel_credentials()
+            target=address, credentials=self._channel_credentials(cert=ca_cert)
         )
+        self._metadata = self._get_metadata(api_key=api_key, tenant_id=tenant_id)
         self.reader = ReaderStub(self._channel)
         self.writer = WriterStub(self._channel)
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
 
-    def get_objects(self, name: str, page: PaginationRequest) -> GetObjectsResponse:
+    def get_objects(
+        self, name: "str | None" = None, page: "PaginationRequest | None" = None
+    ) -> GetObjectsResponse:
         response = self.reader.GetObjects(
-            GetObjectsRequest(param=ObjectTypeIdentifier(name=name), page=PaginationRequest(page))
+            GetObjectsRequest(param=ObjectTypeIdentifier(name=name), page=PaginationRequest(page)),
+            metadata=self._metadata,
         )
         return response
 
-    def get_object(self, key: str, type: str) -> Object:
+    def get_object(self, key: "str | None" = None, type: "str | None" = None) -> Object:
         identifier = ObjectIdentifier(type=type, key=key)
-        response = self.reader.GetObject(GetObjectRequest(param=identifier))
-        return response["result"]
+        response = self.reader.GetObject(
+            GetObjectRequest(param=identifier), metadata=self._metadata
+        )
+        return response.result
 
-    def set_object(self, object: Object) -> Object:
-        response = self.writer.SetObject(SetObjectRequest(object=object))
-        return response["result"]
+    def set_object(self, object: "Object | None" = None) -> Object:
+        response = self.writer.SetObject(SetObjectRequest(object=object), metadata=self._metadata)
+        return response.result
 
-    def delete_object(self, key: str, type: str) -> None:
+    def delete_object(self, key: "str | None" = None, type: "str | None" = None) -> None:
         identifier = ObjectIdentifier(type=type, key=key)
-        self.writer.DeleteObject(DeleteObjectRequest(param=identifier))
+        self.writer.DeleteObject(DeleteObjectRequest(param=identifier), metadata=self._metadata)
 
     def get_relations(
         self,
-        subject_type: str,
-        subject_key: str,
-        object_type: str,
-        object_key: str,
-        relation_type: str,
-        page: PaginationRequest,
+        subject_type: "str | None" = None,
+        subject_key: "str | None" = None,
+        object_type: "str | None" = None,
+        object_key: "str | None" = None,
+        relation_type: "str | None" = None,
+        page: "PaginationRequest | None" = None,
     ) -> GetRelationsResponse:
         response = self.reader.GetRelations(
             GetRelationsRequest(
@@ -89,17 +86,18 @@ class Directory:
                     relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
                 ),
                 page=PaginationRequest(page),
-            )
+            ),
+            metadata=self._metadata,
         )
         return response
 
     def get_relation(
         self,
-        subject_type: str,
-        subject_key: str,
-        object_type: str,
-        object_key: str,
-        relation_type: str,
+        subject_type: "str | None" = None,
+        subject_key: "str | None" = None,
+        object_type: "str | None" = None,
+        object_key: "str | None" = None,
+        relation_type: "str | None" = None,
     ) -> Relation:
         response = self.reader.GetRelation(
             GetRelationRequest(
@@ -108,77 +106,84 @@ class Directory:
                     subject=ObjectIdentifier(type=subject_type, key=subject_key),
                     relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
                 )
-            )
+            ),
+            metadata=self._metadata,
         )
-        return response["results"]
+        return response.results[0]
 
-    def set_relation(self, relation: Relation) -> Relation:
-        response = self.writer.SetRelation(SetRelationRequest(relation=relation))
-        return response["result"]
+    def set_relation(self, relation: "Relation | None" = None) -> Relation:
+        response = self.writer.SetRelation(
+            SetRelationRequest(relation=relation), metadata=self._metadata
+        )
+        return response.result
 
     def delete_relation(
         self,
-        subject_type: str,
-        subject_key: str,
-        object_type: str,
-        object_key: str,
-        relation_type: str,
+        subject_type: "str | None" = None,
+        subject_key: "str | None" = None,
+        object_type: "str | None" = None,
+        object_key: "str | None" = None,
+        relation_type: "str | None" = None,
     ) -> None:
         relation_identifier = RelationIdentifier(
             object=ObjectIdentifier(type=object_type, key=object_key),
             subject=ObjectIdentifier(type=subject_type, key=subject_key),
             relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
         )
-        self.writer.DeleteRelation(DeleteRelationRequest(param=relation_identifier))
+        self.writer.DeleteRelation(
+            DeleteRelationRequest(param=relation_identifier), metadata=self._metadata
+        )
 
     def check_relation(
         self,
-        subject_type: str,
-        subject_key: str,
-        object_type: str,
-        object_key: str,
-        relation_type: str,
+        subject_type: "str | None" = None,
+        subject_key: "str | None" = None,
+        object_type: "str | None" = None,
+        object_key: "str | None" = None,
+        relation_type: "str | None" = None,
     ) -> bool:
         response = self.reader.CheckRelation(
             CheckRelationRequest(
                 object=ObjectIdentifier(type=object_type, key=object_key),
                 subject=ObjectIdentifier(type=subject_type, key=subject_key),
                 relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
-            )
+            ),
+            metadata=self._metadata,
         )
-        return response["check"]
+        return response.check
 
     def check_permission(
         self,
-        subject_type: str,
-        subject_key: str,
-        object_type: str,
-        object_key: str,
-        permission: str,
+        subject_type: "str | None" = None,
+        subject_key: "str | None" = None,
+        object_type: "str | None" = None,
+        object_key: "str | None" = None,
+        permission: "str | None" = None,
     ) -> bool:
         response = self.reader.CheckPermission(
             CheckPermissionRequest(
                 object=ObjectIdentifier(type=object_type, key=object_key),
                 subject=ObjectIdentifier(type=subject_type, key=subject_key),
                 permission=PermissionIdentifier(name=permission),
-            )
+            ),
+            metadata=self._metadata,
         )
-        return response["check"]
+        return response.check
 
     def close_channel(self) -> None:
         self._channel.close()
 
-    def _metadata(self) -> Tuple:
+    def _get_metadata(self, api_key, tenant_id) -> Tuple:
         md = ()
-        if self._config.api_key:
-            md += (("authorization", f"basic {self._config.api_key}"),)
-        if self._config.tenant_id:
-            md += (("aserto-tenant-id", self._config.tenant_id),)
+        if api_key:
+            md += (("authorization", f"basic {api_key}"),)
+        if tenant_id:
+            md += (("aserto-tenant-id", tenant_id),)
         return md
 
-    def _channel_credentials(self) -> grpc.ChannelCredentials:
-        if self._config.cert:
-            with open(self._config.cert, "rb") as f:
+    def _channel_credentials(self, cert) -> grpc.ChannelCredentials:
+        if cert:
+            with open(cert, "rb") as f:
                 return grpc.ssl_channel_credentials(f.read())
         else:
             return grpc.ssl_channel_credentials()
