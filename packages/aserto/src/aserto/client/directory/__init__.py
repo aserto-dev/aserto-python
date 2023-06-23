@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Optional, Tuple
 
 import grpc
 from aserto.directory.common.v2 import (
@@ -34,6 +34,10 @@ from aserto.directory.writer.v2 import (
 )
 
 
+class NotFoundError(Exception):
+    pass
+
+
 class Directory:
     def __init__(self, *, address: str, api_key: str, tenant_id: str, ca_cert: str) -> None:
         self._channel = grpc.secure_channel(
@@ -46,37 +50,48 @@ class Directory:
         self.exporter = ExporterStub(self._channel)
 
     def get_objects(
-        self, name: "str | None" = None, page: "PaginationRequest | None" = None
+        self, object_type: Optional[str] = None, page: Optional[PaginationRequest] = None
     ) -> GetObjectsResponse:
         response = self.reader.GetObjects(
-            GetObjectsRequest(param=ObjectTypeIdentifier(name=name), page=PaginationRequest(page)),
+            GetObjectsRequest(
+                param=ObjectTypeIdentifier(name=object_type), page=PaginationRequest(page)
+            ),
             metadata=self._metadata,
         )
         return response
 
-    def get_object(self, key: "str | None" = None, type: "str | None" = None) -> Object:
-        identifier = ObjectIdentifier(type=type, key=key)
-        response = self.reader.GetObject(
-            GetObjectRequest(param=identifier), metadata=self._metadata
-        )
-        return response.result
+    def get_object(self, key: str, type: str) -> Object:
+        """Retrieve a directory object by its key and type.
+        Returns the object or raises a NotFoundError if an object with the
+        specified key and type doesn't exist."""
+        try:
+            identifier = ObjectIdentifier(type=type, key=key)
+            response = self.reader.GetObject(
+                GetObjectRequest(param=identifier), metadata=self._metadata
+            )
+            return response.result
 
-    def set_object(self, object: "Object | None" = None) -> Object:
+        except grpc.RpcError as err:
+            if err.code() == grpc.StatusCode.NOT_FOUND:
+                raise NotFoundError from err
+            raise
+
+    def set_object(self, object: Object) -> Object:
         response = self.writer.SetObject(SetObjectRequest(object=object), metadata=self._metadata)
         return response.result
 
-    def delete_object(self, key: "str | None" = None, type: "str | None" = None) -> None:
+    def delete_object(self, key: str, type: str) -> None:
         identifier = ObjectIdentifier(type=type, key=key)
         self.writer.DeleteObject(DeleteObjectRequest(param=identifier), metadata=self._metadata)
 
     def get_relations(
         self,
-        subject_type: "str | None" = None,
-        subject_key: "str | None" = None,
-        object_type: "str | None" = None,
-        object_key: "str | None" = None,
-        relation_type: "str | None" = None,
-        page: "PaginationRequest | None" = None,
+        subject_type: Optional[str] = None,
+        subject_key: Optional[str] = None,
+        object_type: Optional[str] = None,
+        object_key: Optional[str] = None,
+        relation_type: Optional[str] = None,
+        page: Optional[PaginationRequest] = None,
     ) -> GetRelationsResponse:
         response = self.reader.GetRelations(
             GetRelationsRequest(
@@ -93,11 +108,11 @@ class Directory:
 
     def get_relation(
         self,
-        subject_type: "str | None" = None,
-        subject_key: "str | None" = None,
-        object_type: "str | None" = None,
-        object_key: "str | None" = None,
-        relation_type: "str | None" = None,
+        subject_type: Optional[str] = None,
+        subject_key: Optional[str] = None,
+        object_type: Optional[str] = None,
+        object_key: Optional[str] = None,
+        relation_type: Optional[str] = None,
     ) -> Relation:
         response = self.reader.GetRelation(
             GetRelationRequest(
@@ -111,7 +126,7 @@ class Directory:
         )
         return response.results[0]
 
-    def set_relation(self, relation: "Relation | None" = None) -> Relation:
+    def set_relation(self, relation: Relation) -> Relation:
         response = self.writer.SetRelation(
             SetRelationRequest(relation=relation), metadata=self._metadata
         )
@@ -119,11 +134,11 @@ class Directory:
 
     def delete_relation(
         self,
-        subject_type: "str | None" = None,
-        subject_key: "str | None" = None,
-        object_type: "str | None" = None,
-        object_key: "str | None" = None,
-        relation_type: "str | None" = None,
+        subject_type: str,
+        subject_key: str,
+        object_type: str,
+        object_key: str,
+        relation_type: str,
     ) -> None:
         relation_identifier = RelationIdentifier(
             object=ObjectIdentifier(type=object_type, key=object_key),
@@ -136,11 +151,11 @@ class Directory:
 
     def check_relation(
         self,
-        subject_type: "str | None" = None,
-        subject_key: "str | None" = None,
-        object_type: "str | None" = None,
-        object_key: "str | None" = None,
-        relation_type: "str | None" = None,
+        subject_type: str,
+        subject_key: str,
+        object_type: str,
+        object_key: str,
+        relation_type: str,
     ) -> bool:
         response = self.reader.CheckRelation(
             CheckRelationRequest(
@@ -154,11 +169,11 @@ class Directory:
 
     def check_permission(
         self,
-        subject_type: "str | None" = None,
-        subject_key: "str | None" = None,
-        object_type: "str | None" = None,
-        object_key: "str | None" = None,
-        permission: "str | None" = None,
+        subject_type: str,
+        subject_key: str,
+        object_type: str,
+        object_key: str,
+        permission: str,
     ) -> bool:
         response = self.reader.CheckPermission(
             CheckPermissionRequest(
