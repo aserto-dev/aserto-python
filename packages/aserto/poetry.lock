@@ -156,14 +156,14 @@ typing-extensions = ">=3.10.0,<4.0.0"
 
 [[package]]
 name = "aserto-directory"
-version = "0.0.1rc1"
+version = "0.21.0"
 description = "gRPC client for Aserto Directory service instances"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "aserto-directory-0.0.1rc1.tar.gz", hash = "sha256:ec9c82889366717b9ce5ed6c8b11fe4def849776cf51efe37d9e1e099771ef47"},
-    {file = "aserto_directory-0.0.1rc1-py3-none-any.whl", hash = "sha256:93177c03d2ba05a42fdf7bb683ecf80cf594dc2eb8682ed285f9fc18f3904aa2"},
+    {file = "aserto-directory-0.21.0.tar.gz", hash = "sha256:f8f9e2430502700248c4bde680eeae5854de060280e473a7efe93a2146edcd6a"},
+    {file = "aserto_directory-0.21.0-py3-none-any.whl", hash = "sha256:0a8068e1a14fff57da2e5701bcb7b5aa4fab98502e6c9f70f9b41aa16b99f736"},
 ]
 
 [package.dependencies]

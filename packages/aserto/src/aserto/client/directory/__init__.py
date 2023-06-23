@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import grpc
 from aserto.directory.common.v2 import (
@@ -113,18 +113,23 @@ class Directory:
         object_type: Optional[str] = None,
         object_key: Optional[str] = None,
         relation_type: Optional[str] = None,
-    ) -> Relation:
+        with_objects: Optional[bool] = None,
+    ) -> Dict[Relation, Optional[Dict[str, Object]]]:
         response = self.reader.GetRelation(
             GetRelationRequest(
                 param=RelationIdentifier(
                     object=ObjectIdentifier(type=object_type, key=object_key),
                     subject=ObjectIdentifier(type=subject_type, key=subject_key),
                     relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
-                )
+                ),
+                with_objects=with_objects,
             ),
             metadata=self._metadata,
         )
-        return response.results[0]
+
+        if not len(response.results):
+            raise NotFoundError
+        return {"relation": response.results[0], "objects": response.objects}
 
     def set_relation(self, relation: Relation) -> Relation:
         response = self.writer.SetRelation(
