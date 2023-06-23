@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 import grpc
 from aserto.directory.common.v2 import (
@@ -17,6 +17,7 @@ from aserto.directory.importer.v2 import ImporterStub
 from aserto.directory.reader.v2 import (
     CheckPermissionRequest,
     CheckRelationRequest,
+    GetObjectManyRequest,
     GetObjectRequest,
     GetObjectsRequest,
     GetObjectsResponse,
@@ -60,10 +61,49 @@ class Directory:
         )
         return response
 
+    def get_many_objects(
+        self,
+        objects: Optional[List[TypedDict("ObjectParams", {"key": str, "type": str})]] = None,
+    ) -> List[Object]:
+        """Retrieve a list of directory object using a list of object key and type pairs.
+        Returns a list of each objects, if an object with the specified key and type exists.
+
+        Parameters
+        ----------
+        objects : list( dict(key: str, type: str) )
+            list of object key and object type pairs
+
+        Returns
+        ----------
+        list
+            list of directory objects
+        """
+
+        identifiers = [ObjectIdentifier(key=x["key"], type=x["type"]) for x in objects]
+        print("identifiers", identifiers)
+        response = self.reader.GetObjectMany(
+            GetObjectManyRequest(param=identifiers),
+            metadata=self._metadata,
+        )
+        return response.results
+
     def get_object(self, key: str, type: str) -> Object:
         """Retrieve a directory object by its key and type.
         Returns the object or raises a NotFoundError if an object with the
-        specified key and type doesn't exist."""
+        specified key and type doesn't exist.
+
+        Parameters
+        -------
+        key : str
+            an object key
+        type : str
+            an object type
+
+        Returns
+        -------
+        object
+            a directory object"""
+
         try:
             identifier = ObjectIdentifier(type=type, key=key)
             response = self.reader.GetObject(
