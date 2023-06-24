@@ -53,6 +53,26 @@ class Directory:
     def get_objects(
         self, object_type: Optional[str] = None, page: Optional[PaginationRequest] = None
     ) -> GetObjectsResponse:
+        """Retrieve a page of directory objects by object type and page size.
+        Returns a list of directory objects and a token for the next page if it exists.
+
+        Parameters
+        ----
+        object_type : str
+            a directory object type
+        page : dict(size: int, token: str)
+            paging information — the size of the page, and the pagination
+            start token
+
+        Returns
+        ----
+        results : list(Object)
+            list of directory objects
+        page : dict(result_size: int, next_token: str)
+            retrieved page information — the size of the page,
+            and the next page's token
+        """
+
         response = self.reader.GetObjects(
             GetObjectsRequest(
                 param=ObjectTypeIdentifier(name=object_type), page=PaginationRequest(page)
@@ -69,12 +89,12 @@ class Directory:
         Returns a list of each objects, if an object with the specified key and type exists.
 
         Parameters
-        ----------
+        ----
         objects : list( dict(key: str, type: str) )
             list of object key and object type pairs
 
         Returns
-        ----------
+        ----
         list
             list of directory objects
         """
@@ -93,16 +113,16 @@ class Directory:
         specified key and type doesn't exist.
 
         Parameters
-        -------
+        ----
         key : str
             an object key
         type : str
             an object type
 
         Returns
-        -------
-        object
-            a directory object"""
+        ----
+        a directory object
+        """
 
         try:
             identifier = ObjectIdentifier(type=type, key=key)
@@ -117,10 +137,42 @@ class Directory:
             raise
 
     def set_object(self, object: Object) -> Object:
+        """Updates a directory object given its key and type, or creates a new object.
+        Returns the created/updated object.
+
+        Parameters
+        ----
+        object : Object
+            key : str
+            type : str
+            display_name : str, optional
+            properties : dict, optional
+            hash : str
+
+        Returns
+        ----
+        a directory object
+        """
+
         response = self.writer.SetObject(SetObjectRequest(object=object), metadata=self._metadata)
         return response.result
 
     def delete_object(self, key: str, type: str) -> None:
+        """Deletes a directory object given its key and type.
+        Returns None.
+
+        Parameters
+        ----
+        key : str
+            an object key
+        type : str
+            an object type
+
+        Returns
+        ----
+        None
+        """
+
         identifier = ObjectIdentifier(type=type, key=key)
         self.writer.DeleteObject(DeleteObjectRequest(param=identifier), metadata=self._metadata)
 
@@ -133,6 +185,36 @@ class Directory:
         relation_type: Optional[str] = None,
         page: Optional[PaginationRequest] = None,
     ) -> GetRelationsResponse:
+        """Retrieve a page of directory relations by any of the parameters
+        object's type and key, subject's type and key, relation type name, and page size.
+        Returns a list of directory relations and a token for the next page if it exists.
+        object --relation_type--> subject
+
+        Parameters
+        ----
+        subject_type : str
+            the subject of the relation, a directory object type
+        subject_key : str
+            the subject of the relation, a directory object key
+        object_type : str
+            the object of the relation, a directory object type
+        object_key : str
+            the object of the relation, a directory object key
+        relation_type : str
+            a directory relation type
+        page : dict(size: int, token: str)
+            paging information — the size of the page, and the pagination
+            start token
+
+        Returns
+        ----
+        results : list(Relation)
+            list of directory relations
+        page : dict(result_size: int, next_token: str)
+            retrieved page information — the size of the page,
+            and the next page's token
+        """
+
         response = self.reader.GetRelations(
             GetRelationsRequest(
                 param=RelationIdentifier(
@@ -155,6 +237,35 @@ class Directory:
         relation_type: Optional[str] = None,
         with_objects: Optional[bool] = None,
     ) -> Dict[Relation, Optional[Dict[str, Object]]]:
+        """Retrieve a directory relation by the object's type and key, the subject's type and key,
+        and relation type name.
+        Returns the relation or raises a NotFoundError if an relation with the
+        specified parameters doesn't exist. Also returns the object if with_objects is set to True.
+        object --relation_type--> subject
+
+        Parameters
+        ----
+        subject_type : str
+            the subject of the relation, a directory object type
+        subject_key : str
+            the subject of the relation, a directory object key
+        object_type : str (required if with_objects is True)
+            the object of the relation, a directory object type
+        object_key : str (required if with_objects is True)
+            the object of the relation, a directory object key
+        relation_type : str
+            a directory relation type
+        with_objects : bool
+            if True, returns the object
+
+        Returns
+        ----
+        relation : Relation
+            a directory relations
+        objects : dict(str, Object)
+            returned with an Object if with_objects is set to True
+        """
+
         response = self.reader.GetRelation(
             GetRelationRequest(
                 param=RelationIdentifier(
@@ -172,6 +283,23 @@ class Directory:
         return {"relation": response.results[0], "objects": response.objects}
 
     def set_relation(self, relation: Relation) -> Relation:
+        """Updates a directory relation given the relation name and object type,
+        or creates a new relation.
+        Returns the created/updated object.
+
+        Parameters
+        ----
+        relation : Relation
+            subject: Object
+            relation: str
+            object: Object
+            hash: str
+
+        Returns
+        ----
+        a directory relation
+        """
+
         response = self.writer.SetRelation(
             SetRelationRequest(relation=relation), metadata=self._metadata
         )
@@ -185,6 +313,29 @@ class Directory:
         object_key: str,
         relation_type: str,
     ) -> None:
+        """Deletes a directory relation the object's type and key, the subject's type and key,
+        and relation type name.
+        Returns None.
+        object --relation_type--> subject
+
+        Parameters
+        ----
+        subject_type : str
+            the subject of the relation, a directory object type
+        subject_key : str
+            the subject of the relation, a directory object key
+        object_type : str (required if with_objects is True)
+            the object of the relation, a directory object type
+        object_key : str (required if with_objects is True)
+            the object of the relation, a directory object key
+        relation_type : str
+            a directory relation type
+
+        Returns
+        ----
+        None
+        """
+
         relation_identifier = RelationIdentifier(
             object=ObjectIdentifier(type=object_type, key=object_key),
             subject=ObjectIdentifier(type=subject_type, key=subject_key),
@@ -202,6 +353,30 @@ class Directory:
         object_key: str,
         relation_type: str,
     ) -> bool:
+        """Checks if a subject has a given relation to an object given
+        the object's type and key, the subject's type and key,
+        and relation type name.
+        Returns the result of the relation check, True or False.
+        object --relation_type--> subject
+
+        Parameters
+        ----
+        subject_type : str
+            the subject of the relation, a directory object type
+        subject_key : str
+            the subject of the relation, a directory object key
+        object_type : str (required if with_objects is True)
+            the object of the relation, a directory object type
+        object_key : str (required if with_objects is True)
+            the object of the relation, a directory object key
+        relation_type : str
+            a directory relation type
+
+        Returns
+        ----
+        True or False
+        """
+
         response = self.reader.CheckRelation(
             CheckRelationRequest(
                 object=ObjectIdentifier(type=object_type, key=object_key),
@@ -220,6 +395,29 @@ class Directory:
         object_key: str,
         permission: str,
     ) -> bool:
+        """Checks if a subject has a given permission on an object given
+        the object's type and key, the subject's type and key,
+        and permission name.
+        Returns the result of the permission check, True or False.
+
+        Parameters
+        ----
+        subject_type : str
+            the subject to check the permission for, a directory object type
+        subject_key : str
+            the subject to check the permission for, a directory object key
+        object_type : str (required if with_objects is True)
+            the object to check the permission on, a directory object type
+        object_key : str (required if with_objects is True)
+            the object to check the permission on, a directory object key
+        permission : str
+            a directory permission
+
+        Returns
+        ----
+        True or False
+        """
+
         response = self.reader.CheckPermission(
             CheckPermissionRequest(
                 object=ObjectIdentifier(type=object_type, key=object_key),
@@ -231,6 +429,8 @@ class Directory:
         return response.check
 
     def close_channel(self) -> None:
+        """Closes the gRPC channel"""
+
         self._channel.close()
 
     def _get_metadata(self, api_key, tenant_id) -> Tuple:
