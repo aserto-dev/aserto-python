@@ -41,15 +41,20 @@ class NotFoundError(Exception):
 
 
 class Directory:
-    def __init__(self, *, address: str, api_key: str, tenant_id: str, ca_cert: str) -> None:
-        self._channel = grpc.secure_channel(
-            target=address, credentials=self._channel_credentials(cert=ca_cert)
-        )
+    def __init__(self, channel: grpc.Channel, api_key: str, tenant_id: str) -> None:
+        self._channel = channel
         self._metadata = self._get_metadata(api_key=api_key, tenant_id=tenant_id)
         self.reader = ReaderStub(self._channel)
         self.writer = WriterStub(self._channel)
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
+
+    @classmethod
+    def connect(cls, *, address: str, api_key: str, tenant_id: str, ca_cert: str):
+        channel = grpc.secure_channel(
+            target=address, credentials=cls._channel_credentials(cert=ca_cert)
+        )
+        return Directory(channel, api_key, tenant_id)
 
     def get_objects(
         self, object_type: Optional[str] = None, page: Optional[PaginationRequest] = None
@@ -250,9 +255,9 @@ class Directory:
             the subject of the relation, a directory object type
         subject_key : str
             the subject of the relation, a directory object key
-        object_type : str (required if with_objects is True)
+        object_type : str (required if relation_type is specified)
             the object of the relation, a directory object type
-        object_key : str (required if with_objects is True)
+        object_key : str
             the object of the relation, a directory object key
         relation_type : str
             a directory relation type
@@ -429,12 +434,13 @@ class Directory:
         )
         return response.check
 
-    def close_channel(self) -> None:
+    def close(self) -> None:
         """Closes the gRPC channel"""
 
         self._channel.close()
 
-    def _get_metadata(self, api_key, tenant_id) -> Tuple:
+    @staticmethod
+    def _get_metadata(api_key, tenant_id) -> Tuple:
         md = ()
         if api_key:
             md += (("authorization", f"basic {api_key}"),)
@@ -442,9 +448,16 @@ class Directory:
             md += (("aserto-tenant-id", tenant_id),)
         return md
 
-    def _channel_credentials(self, cert) -> grpc.ChannelCredentials:
+    @staticmethod
+    def _channel_credentials(cert) -> grpc.ChannelCredentials:
         if cert:
             with open(cert, "rb") as f:
                 return grpc.ssl_channel_credentials(f.read())
         else:
             return grpc.ssl_channel_credentials()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()

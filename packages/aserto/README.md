@@ -62,8 +62,7 @@ You can initialize a directory client as follows:
 ```py
 from aserto.client.directory import Directory
 
-config = {"api_key": "my_api_key", "tenant_id": "1234", "address": "localhost:9292"}
-ds = Directory(**config)
+ds = Directory.connect(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
 ```
 
 - `address`: hostname:port of directory service (_required_)
