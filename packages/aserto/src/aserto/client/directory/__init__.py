@@ -7,6 +7,7 @@ from aserto.directory.common.v2 import (
     ObjectIdentifier,
     ObjectTypeIdentifier,
     PaginationRequest,
+    PaginationResponse,
     PermissionIdentifier,
     Relation,
     RelationIdentifier,
@@ -60,23 +61,22 @@ class Directory:
         ----
         object_type : str
             a directory object type
-        page : dict(size: int, token: str)
+        page : PaginationRequest(size: int, token: str)
             paging information — the size of the page, and the pagination
             start token
 
         Returns
         ----
-        results : list(Object)
-            list of directory objects
-        page : dict(result_size: int, next_token: str)
-            retrieved page information — the size of the page,
-            and the next page's token
+        GetObjectsResponse
+            results : list(Object)
+                list of directory objects
+            page : PaginationResponse(result_size: int, next_token: str)
+                retrieved page information — the size of the page,
+                and the next page's token
         """
 
         response = self.reader.GetObjects(
-            GetObjectsRequest(
-                param=ObjectTypeIdentifier(name=object_type), page=PaginationRequest(page)
-            ),
+            GetObjectsRequest(param=ObjectTypeIdentifier(name=object_type), page=page),
             metadata=self._metadata,
         )
         return response
@@ -202,17 +202,18 @@ class Directory:
             the object of the relation, a directory object key
         relation_type : str
             a directory relation type
-        page : dict(size: int, token: str)
+        page : PaginationRequest(size: int, token: str)
             paging information — the size of the page, and the pagination
             start token
 
         Returns
         ----
-        results : list(Relation)
-            list of directory relations
-        page : dict(result_size: int, next_token: str)
-            retrieved page information — the size of the page,
-            and the next page's token
+        GetRelationsResponse
+            results : list(Relation)
+                list of directory relations
+            page : PaginationResponse(result_size: int, next_token: str)
+                retrieved page information — the size of the page,
+                and the next page's token
         """
 
         response = self.reader.GetRelations(
@@ -222,7 +223,7 @@ class Directory:
                     subject=ObjectIdentifier(type=subject_type, key=subject_key),
                     relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
                 ),
-                page=PaginationRequest(page),
+                page=page,
             ),
             metadata=self._metadata,
         )
@@ -324,9 +325,9 @@ class Directory:
             the subject of the relation, a directory object type
         subject_key : str
             the subject of the relation, a directory object key
-        object_type : str (required if with_objects is True)
+        object_type : str
             the object of the relation, a directory object type
-        object_key : str (required if with_objects is True)
+        object_key : str
             the object of the relation, a directory object key
         relation_type : str
             a directory relation type
@@ -365,9 +366,9 @@ class Directory:
             the subject of the relation, a directory object type
         subject_key : str
             the subject of the relation, a directory object key
-        object_type : str (required if with_objects is True)
+        object_type : str
             the object of the relation, a directory object type
-        object_key : str (required if with_objects is True)
+        object_key : str
             the object of the relation, a directory object key
         relation_type : str
             a directory relation type
@@ -406,9 +407,9 @@ class Directory:
             the subject to check the permission for, a directory object type
         subject_key : str
             the subject to check the permission for, a directory object key
-        object_type : str (required if with_objects is True)
+        object_type : str
             the object to check the permission on, a directory object type
-        object_key : str (required if with_objects is True)
+        object_key : str
             the object to check the permission on, a directory object key
         permission : str
             a directory permission
