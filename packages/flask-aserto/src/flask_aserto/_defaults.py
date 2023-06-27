@@ -1,7 +1,7 @@
 import re
 from typing import Optional
 
-from aserto import ResourceContext
+from aserto.client import ResourceContext
 from flask import request
 
 from ._maybe_async import MaybeAsyncCallback

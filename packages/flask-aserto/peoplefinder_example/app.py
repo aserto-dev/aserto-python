@@ -13,7 +13,12 @@ CORS(app, headers=["Content-Type", "Authorization"])
 
 # Check authorization by initializing the Aserto middleware with options
 aserto_options = load_aserto_options_from_environment()
-aserto = AsertoMiddleware(**aserto_options)
+aserto = AsertoMiddleware(
+    authorizer_options=aserto_options.authorizer_options,
+    policy_name=aserto_options.policy_name,
+    policy_path_root=aserto_options.policy_path_root,
+    identity_provider=aserto_options.identity_provider,
+)
 
 # Set up middleware to return the display state map for this service
 aserto.register_display_state_map(app)
@@ -30,9 +35,9 @@ def handle_auth_error(exception: AuthorizationError) -> Response:
 @aserto.authorize
 async def api_user(id: str) -> Response:
     people_client = PeopleClient(
-        tenant_id=aserto_options["authorizer"].tenant_id,
-        authorizer_api_key=aserto_options["authorizer"].api_key,
-        authorizer_url=aserto_options["authorizer"].url,
+        tenant_id=aserto_options.tenant_id,
+        directory_api_key=aserto_options.directory_api_key,
+        directory_url=aserto_options.directory_url,
     )
 
     if request.method == "GET":
@@ -57,9 +62,9 @@ async def api_users() -> Response:
         return Response(status=403)
 
     people_client = PeopleClient(
-        tenant_id=aserto_options["authorizer"].tenant_id,
-        authorizer_api_key=aserto_options["authorizer"].api_key,
-        authorizer_url=aserto_options["authorizer"].url,
+        tenant_id=aserto_options.tenant_id,
+        directory_api_key=aserto_options.directory_api_key,
+        directory_url=aserto_options.directory_url,
     )
 
     return jsonify(await people_client.list_people())

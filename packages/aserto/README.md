@@ -13,13 +13,13 @@ poetry add aserto
 ```
 ## Usage
 ```py
-from aserto import HostedAuthorizer, Identity
-from aserto.api.authorizer import AuthorizerClient
+from aserto.client import AuthorizerOptions, Identity
+from aserto.client.api.authorizer import AuthorizerClient
 
 
 client = AuthorizerClient(
     identity=Identity(type="NONE"),
-    authorizer=HostedAuthorizer(
+    options=AuthorizerOptions(
         api_key=ASERTO_API_KEY,
         tenant_id=ASERTO_TENANT_ID,
         service_type="gRPC",
@@ -28,7 +28,8 @@ client = AuthorizerClient(
 
 result = await client.decision_tree(
     decisions=["visible", "enabled", "allowed"],
-    policy_id=ASERTO_POLICY_ID,
+    policy_instance_name=ASERTO_POLICY_INSTANCE_NAME,
+    policy_instance_label=ASERTO_POLICY_INSTANCE_LABEL,
     policy_path_root=ASERTO_POLICY_PATH_ROOT,
     policy_path_separator="DOT",
 )
