@@ -18,7 +18,7 @@ from aserto_idp.oidc import identity_provider
 ## Usage
 ### With [`aserto-authorizer-grpc`](https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto-authorizer-grpc)
 ```py
-from aserto_authorizer_grpc.aserto.api.v1 import IdentityContext, IdentityType
+from aserto.client import IdentityContext, IdentityType
 from aserto_idp.oidc import AccessTokenError, identity_provider
 
 oidc_provider = identity_provider(issuer=OIDC_ISSUER, client_id=OIDC_CLIENT_ID)
