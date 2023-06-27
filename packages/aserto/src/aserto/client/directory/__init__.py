@@ -147,7 +147,7 @@ class Directory:
             type : str
             display_name : str, optional
             properties : dict, optional
-            hash : str
+            hash : str (required, if updating existing object)
 
         Returns
         ----
@@ -294,7 +294,7 @@ class Directory:
             subject: Object
             relation: str
             object: Object
-            hash: str
+            hash: str (required, if updating existing relation)
 
         Returns
         ----
