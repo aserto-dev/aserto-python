@@ -33,6 +33,7 @@ typing-extensions = "^3.10.0"
 grpcio = "^1.49.1"
 protobuf = "^4.21.7"
 aserto-authorizer = "0.20.0"
+aserto-directory = "*"
 
 [tool.poetry.dev-dependencies]
 black = "21.7b0"
