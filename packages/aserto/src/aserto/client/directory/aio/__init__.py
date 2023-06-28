@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, TypedDict
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 import grpc.aio as grpc
 from aserto.directory.common.v2 import (
@@ -7,6 +7,9 @@ from aserto.directory.common.v2 import (
     ObjectTypeIdentifier,
     PaginationRequest,
     PaginationResponse,
+    Relation,
+    RelationIdentifier,
+    RelationTypeIdentifier,
 )
 from aserto.directory.exporter.v2 import ExporterStub
 from aserto.directory.importer.v2 import ImporterStub
@@ -15,9 +18,18 @@ from aserto.directory.reader.v2 import (
     GetObjectRequest,
     GetObjectsRequest,
     GetObjectsResponse,
+    GetRelationRequest,
+    GetRelationsRequest,
+    GetRelationsResponse,
     ReaderStub,
 )
-from aserto.directory.writer.v2 import DeleteObjectRequest, SetObjectRequest, WriterStub
+from aserto.directory.writer.v2 import (
+    DeleteObjectRequest,
+    DeleteRelationRequest,
+    SetObjectRequest,
+    SetRelationRequest,
+    WriterStub,
+)
 from grpc import ChannelCredentials, StatusCode, ssl_channel_credentials
 
 
@@ -168,6 +180,178 @@ class Directory:
         identifier = ObjectIdentifier(type=type, key=key)
         await self.writer.DeleteObject(
             DeleteObjectRequest(param=identifier), metadata=self._metadata
+        )
+
+    async def get_relations(
+        self,
+        subject_type: Optional[str] = None,
+        subject_key: Optional[str] = None,
+        object_type: Optional[str] = None,
+        object_key: Optional[str] = None,
+        relation_type: Optional[str] = None,
+        page: Optional[PaginationRequest] = None,
+    ) -> GetRelationsResponse:
+        """Retrieve a page of directory relations by any of the parameters
+        object's type and key, subject's type and key, relation type name, and page size.
+        Returns a list of directory relations and a token for the next page if it exists.
+        object --relation_type--> subject
+
+        Parameters
+        ----
+        subject_type : str
+            the subject of the relation, a directory object type
+        subject_key : str
+            the subject of the relation, a directory object key
+        object_type : str
+            the object of the relation, a directory object type
+        object_key : str
+            the object of the relation, a directory object key
+        relation_type : str
+            a directory relation type
+        page : PaginationRequest(size: int, token: str)
+            paging information — the size of the page, and the pagination
+            start token
+
+        Returns
+        ----
+        GetRelationsResponse
+            results : list(Relation)
+                list of directory relations
+            page : PaginationResponse(result_size: int, next_token: str)
+                retrieved page information — the size of the page,
+                and the next page's token
+        """
+
+        response = await self.reader.GetRelations(
+            GetRelationsRequest(
+                param=RelationIdentifier(
+                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+                ),
+                page=page,
+            ),
+            metadata=self._metadata,
+        )
+        return response
+
+    async def get_relation(
+        self,
+        subject_type: Optional[str] = None,
+        subject_key: Optional[str] = None,
+        object_type: Optional[str] = None,
+        object_key: Optional[str] = None,
+        relation_type: Optional[str] = None,
+        with_objects: Optional[bool] = None,
+    ) -> Dict[Relation, Optional[Dict[str, Object]]]:
+        """Retrieve a directory relation by the object's type and key, the subject's type and key,
+        and relation type name.
+        Returns the relation or raises a NotFoundError if an relation with the
+        specified parameters doesn't exist. Also returns the object if with_objects is set to True.
+        object --relation_type--> subject
+
+        Parameters
+        ----
+        subject_type : str
+            the subject of the relation, a directory object type
+        subject_key : str
+            the subject of the relation, a directory object key
+        object_type : str (required if relation_type is specified)
+            the object of the relation, a directory object type
+        object_key : str
+            the object of the relation, a directory object key
+        relation_type : str
+            a directory relation type
+        with_objects : bool
+            if True, returns the object
+
+        Returns
+        ----
+        relation : Relation
+            a directory relations
+        objects : dict(str, Object)
+            returned with an Object if with_objects is set to True
+        """
+
+        response = await self.reader.GetRelation(
+            GetRelationRequest(
+                param=RelationIdentifier(
+                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+                ),
+                with_objects=with_objects,
+            ),
+            metadata=self._metadata,
+        )
+
+        if not len(response.results):
+            raise NotFoundError
+        return {"relation": response.results[0], "objects": response.objects}
+
+    async def set_relation(self, relation: Relation) -> Relation:
+        """Updates a directory relation given the relation name and object type,
+        or creates a new relation.
+        Returns the created/updated object.
+
+        Parameters
+        ----
+        relation : Relation
+            subject: Object
+            relation: str
+            object: Object
+            hash: str (required, if updating existing relation)
+
+        Returns
+        ----
+        a directory relation
+        """
+
+        response = await self.writer.SetRelation(
+            SetRelationRequest(relation=relation), metadata=self._metadata
+        )
+        return response.result
+
+    async def delete_relation(
+        self,
+        subject_type: str,
+        subject_key: str,
+        object_type: str,
+        object_key: str,
+        relation_type: str,
+    ) -> None:
+        """Deletes a directory relation the object's type and key, the subject's type and key,
+        and relation type name.
+        Returns None.
+        object --relation_type--> subject
+
+        Parameters
+        ----
+        subject_type : str
+            the subject of the relation, a directory object type
+        subject_key : str
+            the subject of the relation, a directory object key
+        object_type : str
+            the object of the relation, a directory object type
+        object_key : str
+            the object of the relation, a directory object key
+        relation_type : str
+            a directory relation type
+
+        Returns
+        ----
+        None
+        """
+
+        await self.writer.DeleteRelation(
+            DeleteRelationRequest(
+                param=RelationIdentifier(
+                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+                )
+            ),
+            metadata=self._metadata,
         )
 
     async def close(self) -> None:
