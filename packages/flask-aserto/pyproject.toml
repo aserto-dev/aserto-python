@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "flask-aserto"
-version = "0.20.0"
+version = "0.20.1"
 description = "Aserto integration for Flask"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
