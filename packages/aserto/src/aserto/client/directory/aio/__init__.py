@@ -7,6 +7,7 @@ from aserto.directory.common.v2 import (
     ObjectTypeIdentifier,
     PaginationRequest,
     PaginationResponse,
+    PermissionIdentifier,
     Relation,
     RelationIdentifier,
     RelationTypeIdentifier,
@@ -14,6 +15,8 @@ from aserto.directory.common.v2 import (
 from aserto.directory.exporter.v2 import ExporterStub
 from aserto.directory.importer.v2 import ImporterStub
 from aserto.directory.reader.v2 import (
+    CheckPermissionRequest,
+    CheckRelationRequest,
     GetObjectManyRequest,
     GetObjectRequest,
     GetObjectsRequest,
@@ -353,6 +356,89 @@ class Directory:
             ),
             metadata=self._metadata,
         )
+
+    async def check_relation(
+        self,
+        subject_type: str,
+        subject_key: str,
+        object_type: str,
+        object_key: str,
+        relation_type: str,
+    ) -> bool:
+        """Checks if a subject has a given relation to an object given
+        the object's type and key, the subject's type and key,
+        and relation type name.
+        Returns the result of the relation check, True or False.
+        object --relation_type--> subject
+
+        Parameters
+        ----
+        subject_type : str
+            the subject of the relation, a directory object type
+        subject_key : str
+            the subject of the relation, a directory object key
+        object_type : str
+            the object of the relation, a directory object type
+        object_key : str
+            the object of the relation, a directory object key
+        relation_type : str
+            a directory relation type
+
+        Returns
+        ----
+        True or False
+        """
+
+        response = await self.reader.CheckRelation(
+            CheckRelationRequest(
+                object=ObjectIdentifier(type=object_type, key=object_key),
+                subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+            ),
+            metadata=self._metadata,
+        )
+        return response.check
+
+    async def check_permission(
+        self,
+        subject_type: str,
+        subject_key: str,
+        object_type: str,
+        object_key: str,
+        permission: str,
+    ) -> bool:
+        """Checks if a subject has a given permission on an object given
+        the object's type and key, the subject's type and key,
+        and permission name.
+        Returns the result of the permission check, True or False.
+
+        Parameters
+        ----
+        subject_type : str
+            the subject to check the permission for, a directory object type
+        subject_key : str
+            the subject to check the permission for, a directory object key
+        object_type : str
+            the object to check the permission on, a directory object type
+        object_key : str
+            the object to check the permission on, a directory object key
+        permission : str
+            a directory permission
+
+        Returns
+        ----
+        True or False
+        """
+
+        response = await self.reader.CheckPermission(
+            CheckPermissionRequest(
+                object=ObjectIdentifier(type=object_type, key=object_key),
+                subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                permission=PermissionIdentifier(name=permission),
+            ),
+            metadata=self._metadata,
+        )
+        return response.check
 
     async def close(self) -> None:
         """Closes the gRPC channel"""
