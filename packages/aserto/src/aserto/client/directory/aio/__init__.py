@@ -1,29 +1,29 @@
 from typing import Optional, Tuple
 
-import grpc
+import grpc.aio as grpc
 from aserto.directory.common.v2 import ObjectTypeIdentifier, PaginationRequest
 from aserto.directory.exporter.v2 import ExporterStub
 from aserto.directory.importer.v2 import ImporterStub
 from aserto.directory.reader.v2 import GetObjectsRequest, GetObjectsResponse, ReaderStub
 from aserto.directory.writer.v2 import WriterStub
+from grpc import Channel, ChannelCredentials, ssl_channel_credentials
 
 
-class DirectoryAsync:
-    def __init__(self):
-        pass
-
-    @classmethod
-    async def create(cls, *, address: str, api_key: str, tenant_id: str, ca_cert: str):
-        self = cls()
-        self._channel = grpc.aio.secure_channel(
-            target=address, credentials=self._channel_credentials(cert=ca_cert)
-        )
+class Directory:
+    def __init__(self, channel: grpc.Channel, api_key: str, tenant_id: str) -> None:
+        self._channel = channel
         self._metadata = self._get_metadata(api_key=api_key, tenant_id=tenant_id)
         self.reader = ReaderStub(self._channel)
         self.writer = WriterStub(self._channel)
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
-        return self
+
+    @classmethod
+    async def connect(cls, *, address: str, api_key: str, tenant_id: str, ca_cert: str):
+        channel = grpc.secure_channel(
+            target=address, credentials=cls._channel_credentials(cert=ca_cert)
+        )
+        return Directory(channel, api_key, tenant_id)
 
     async def get_objects(
         self, object_type: Optional[str] = None, page: Optional[PaginationRequest] = None
@@ -55,12 +55,19 @@ class DirectoryAsync:
         )
         return response
 
-    async def close_channel(self) -> None:
+    async def close(self) -> None:
         """Closes the gRPC channel"""
 
         await self._channel.close()
 
-    def _get_metadata(self, api_key, tenant_id) -> Tuple:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, type, value, traceback):
+        await self.close()
+
+    @staticmethod
+    def _get_metadata(api_key, tenant_id) -> Tuple:
         md = ()
         if api_key:
             md += (("authorization", f"basic {api_key}"),)
@@ -68,24 +75,10 @@ class DirectoryAsync:
             md += (("aserto-tenant-id", tenant_id),)
         return md
 
-    def _channel_credentials(self, cert) -> grpc.ChannelCredentials:
+    @staticmethod
+    def _channel_credentials(cert) -> ChannelCredentials:
         if cert:
             with open(cert, "rb") as f:
-                return grpc.ssl_channel_credentials(f.read())
+                return ssl_channel_credentials(f.read())
         else:
-            return grpc.ssl_channel_credentials()
-
-
-# async def main():
-#     config = {
-#         "api_key": api_key,
-#         "tenant_id": tenant_id,
-#         "address": address,
-#         "ca_cert": cert,
-#     }
-#     ds = await DirectoryAsync.create(**config)
-#     response = await ds.get_objects(object_type="user", page=PaginationRequest(size=10))
-#     print(response)
-
-
-# asyncio.run(main())
+            return ssl_channel_credentials()
