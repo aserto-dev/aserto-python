@@ -62,7 +62,7 @@ You can initialize a directory client as follows:
 ```py
 from aserto.client.directory import Directory
 
-ds = Directory.connect(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
+ds = Directory(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
 ```
 
 - `address`: hostname:port of directory service (_required_)
@@ -120,7 +120,7 @@ You can initialize an asynchronous directory client as follows:
 ```py
 from aserto.client.directory.aio import Directory
 
-ds = await Directory.connect(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
+ds = Directory(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
 ```
 
 #### async 'set_relation' function

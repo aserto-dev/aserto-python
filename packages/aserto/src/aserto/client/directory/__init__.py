@@ -41,20 +41,15 @@ class NotFoundError(Exception):
 
 
 class Directory:
-    def __init__(self, channel: grpc.Channel, api_key: str, tenant_id: str) -> None:
-        self._channel = channel
+    def __init__(self, *, address: str, api_key: str, tenant_id: str, ca_cert: str) -> None:
+        self._channel = grpc.secure_channel(
+            target=address, credentials=self._channel_credentials(cert=ca_cert)
+        )
         self._metadata = self._get_metadata(api_key=api_key, tenant_id=tenant_id)
         self.reader = ReaderStub(self._channel)
         self.writer = WriterStub(self._channel)
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
-
-    @classmethod
-    def connect(cls, *, address: str, api_key: str, tenant_id: str, ca_cert: str):
-        channel = grpc.secure_channel(
-            target=address, credentials=cls._channel_credentials(cert=ca_cert)
-        )
-        return Directory(channel, api_key, tenant_id)
 
     def get_objects(
         self, object_type: Optional[str] = None, page: Optional[PaginationRequest] = None
@@ -105,7 +100,6 @@ class Directory:
         """
 
         identifiers = [ObjectIdentifier(key=x["key"], type=x["type"]) for x in objects]
-        print("identifiers", identifiers)
         response = self.reader.GetObjectMany(
             GetObjectManyRequest(param=identifiers),
             metadata=self._metadata,
