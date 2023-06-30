@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aserto"
-version = "0.21.0"
+version = "0.21.1"
 description = "Aserto API client"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
@@ -16,9 +16,10 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
   "Topic :: Software Development :: Libraries",
   "Typing :: Typed",
 ]
@@ -28,7 +29,7 @@ packages = [
 
 [tool.poetry.dependencies]
 aiohttp = "^3.8.1"
-python = "^3.7"
+python = "^3.8"
 typing-extensions = "^3.10.0"
 grpcio = "^1.49.1"
 protobuf = "^4.21.7"
