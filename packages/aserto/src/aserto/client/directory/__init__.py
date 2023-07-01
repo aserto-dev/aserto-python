@@ -7,6 +7,7 @@ from aserto.directory.common.v2 import ObjectIdentifier as ObjectIdentifierV2
 from aserto.directory.common.v2 import (
     ObjectTypeIdentifier,
     PaginationRequest,
+    PaginationResponse,
     PermissionIdentifier,
     Relation,
     RelationIdentifier,
@@ -40,8 +41,10 @@ class ObjectIdentifier:
     """
     Unique identifier of a directory object.
     """
+
     key: str
     type: str
+
 
 @dataclass(frozen=True)
 class GetRelationResponse:
@@ -53,6 +56,7 @@ class GetRelationResponse:
     relation    The returned relation.
     objects     If with_relations is True, a mapping from "type:key" to the corresponding object.
     """
+
     relation: Relation
     objects: Optional[Mapping[str, Object]]
 
@@ -62,7 +66,9 @@ class NotFoundError(Exception):
 
 
 class Directory:
-    def __init__(self, channel: grpc.Channel, api_key: Optional[str] = None, tenant_id: Optional[str] = None) -> None:
+    def __init__(
+        self, channel: grpc.Channel, api_key: Optional[str] = None, tenant_id: Optional[str] = None
+    ) -> None:
         self._channel = channel
         self._metadata = self._get_metadata(api_key=api_key, tenant_id=tenant_id)
         self.reader = ReaderStub(self._channel)
@@ -72,7 +78,8 @@ class Directory:
 
     @classmethod
     def connect(
-        cls, *,
+        cls,
+        *,
         address: str,
         api_key: Optional[str] = None,
         tenant_id: Optional[str] = None,
@@ -268,7 +275,7 @@ class Directory:
         object_key: Optional[str] = None,
         relation_type: Optional[str] = None,
         with_objects: Optional[bool] = None,
-        ) -> GetRelationResponse:
+    ) -> GetRelationResponse:
         """Retrieve a directory relation by the object's type and key, the subject's type and key,
         and relation type name.
         Returns the relation or raises a NotFoundError if an relation with the
