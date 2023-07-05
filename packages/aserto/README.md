@@ -62,7 +62,7 @@ You can initialize a directory client as follows:
 ```py
 from aserto.client.directory import Directory
 
-ds = Directory.connect(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
+ds = Directory(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
 ```
 
 - `address`: hostname:port of directory service (_required_)
@@ -111,6 +111,30 @@ Delete an object instance using its type and key:
 
 ```py
 ds.delete_object(type="user", key="test-object")
+```
+
+### Async Directory Client
+
+You can initialize an asynchronous directory client as follows:
+
+```py
+from aserto.client.directory.aio import Directory
+
+ds = Directory(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
+```
+
+#### async 'set_relation' function
+
+Create a new relation with the specified fields. For example:
+
+```py
+relation = await ds.set_relation(
+    relation={
+        "subject": {"key": "test-subject", "type": "user"},
+        "object": {"key": "test-object", "type": "group"},
+        "relation": "member",
+    }
+)
 ```
 
 ## License

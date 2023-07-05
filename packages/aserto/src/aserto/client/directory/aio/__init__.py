@@ -1,10 +1,9 @@
-from dataclasses import asdict, dataclass
-from typing import List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple, TypedDict
 
-import grpc
-from aserto.directory.common.v2 import Object
-from aserto.directory.common.v2 import ObjectIdentifier as ObjectIdentifierV2
+import grpc.aio as grpc
 from aserto.directory.common.v2 import (
+    Object,
+    ObjectIdentifier,
     ObjectTypeIdentifier,
     PaginationRequest,
     PaginationResponse,
@@ -34,31 +33,7 @@ from aserto.directory.writer.v2 import (
     SetRelationRequest,
     WriterStub,
 )
-
-
-@dataclass(frozen=True)
-class ObjectIdentifier:
-    """
-    Unique identifier of a directory object.
-    """
-
-    key: str
-    type: str
-
-
-@dataclass(frozen=True)
-class GetRelationResponse:
-    """
-    Response to get_relation calls.
-
-    Attributes
-    ----
-    relation    The returned relation.
-    objects     If with_relations is True, a mapping from "type:key" to the corresponding object.
-    """
-
-    relation: Relation
-    objects: Optional[Mapping[str, Object]]
+from grpc import ChannelCredentials, StatusCode, ssl_channel_credentials
 
 
 class NotFoundError(Exception):
@@ -66,14 +41,7 @@ class NotFoundError(Exception):
 
 
 class Directory:
-    def __init__(
-        self,
-        *,
-        address: str,
-        api_key: Optional[str] = None,
-        tenant_id: Optional[str] = None,
-        ca_cert: Optional[str] = None,
-    ) -> None:
+    def __init__(self, *, address: str, api_key: str, tenant_id: str, ca_cert: str) -> None:
         self._channel = grpc.secure_channel(
             target=address, credentials=self._channel_credentials(cert=ca_cert)
         )
@@ -83,7 +51,7 @@ class Directory:
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
 
-    def get_objects(
+    async def get_objects(
         self, object_type: Optional[str] = None, page: Optional[PaginationRequest] = None
     ) -> GetObjectsResponse:
         """Retrieve a page of directory objects by object type and page size.
@@ -107,15 +75,15 @@ class Directory:
                 and the next page's token
         """
 
-        response = self.reader.GetObjects(
+        response = await self.reader.GetObjects(
             GetObjectsRequest(param=ObjectTypeIdentifier(name=object_type), page=page),
             metadata=self._metadata,
         )
         return response
 
-    def get_objects_many(
+    async def get_objects_many(
         self,
-        objects: Sequence[ObjectIdentifier],
+        objects: Optional[List[TypedDict("ObjectParams", {"key": str, "type": str})]] = None,
     ) -> List[Object]:
         """Retrieve a list of directory object using a list of object key and type pairs.
         Returns a list of each objects, if an object with the specified key and type exists.
@@ -131,14 +99,14 @@ class Directory:
             list of directory objects
         """
 
-        identifiers = [ObjectIdentifierV2(**asdict(x)) for x in objects]
-        response = self.reader.GetObjectMany(
+        identifiers = [ObjectIdentifier(key=x["key"], type=x["type"]) for x in objects]
+        response = await self.reader.GetObjectMany(
             GetObjectManyRequest(param=identifiers),
             metadata=self._metadata,
         )
         return response.results
 
-    def get_object(self, key: str, type: str) -> Object:
+    async def get_object(self, key: str, type: str) -> Object:
         """Retrieve a directory object by its key and type.
         Returns the object or raises a NotFoundError if an object with the
         specified key and type doesn't exist.
@@ -156,18 +124,18 @@ class Directory:
         """
 
         try:
-            identifier = ObjectIdentifierV2(type=type, key=key)
-            response = self.reader.GetObject(
+            identifier = ObjectIdentifier(type=type, key=key)
+            response = await self.reader.GetObject(
                 GetObjectRequest(param=identifier), metadata=self._metadata
             )
             return response.result
 
-        except grpc.RpcError as err:
-            if err.code() == grpc.StatusCode.NOT_FOUND:
+        except grpc.AioRpcError as err:
+            if err.code() == StatusCode.NOT_FOUND:
                 raise NotFoundError from err
             raise
 
-    def set_object(self, object: Object) -> Object:
+    async def set_object(self, object: Object) -> Object:
         """Updates a directory object given its key and type, or creates a new object.
         Returns the created/updated object.
 
@@ -185,10 +153,12 @@ class Directory:
         a directory object
         """
 
-        response = self.writer.SetObject(SetObjectRequest(object=object), metadata=self._metadata)
+        response = await self.writer.SetObject(
+            SetObjectRequest(object=object), metadata=self._metadata
+        )
         return response.result
 
-    def delete_object(self, key: str, type: str) -> None:
+    async def delete_object(self, key: str, type: str) -> None:
         """Deletes a directory object given its key and type.
         Returns None.
 
@@ -204,10 +174,12 @@ class Directory:
         None
         """
 
-        identifier = ObjectIdentifierV2(type=type, key=key)
-        self.writer.DeleteObject(DeleteObjectRequest(param=identifier), metadata=self._metadata)
+        identifier = ObjectIdentifier(type=type, key=key)
+        await self.writer.DeleteObject(
+            DeleteObjectRequest(param=identifier), metadata=self._metadata
+        )
 
-    def get_relations(
+    async def get_relations(
         self,
         subject_type: Optional[str] = None,
         subject_key: Optional[str] = None,
@@ -247,11 +219,11 @@ class Directory:
                 and the next page's token
         """
 
-        response = self.reader.GetRelations(
+        response = await self.reader.GetRelations(
             GetRelationsRequest(
                 param=RelationIdentifier(
-                    object=ObjectIdentifierV2(type=object_type, key=object_key),
-                    subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
+                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
                     relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
                 ),
                 page=page,
@@ -260,7 +232,7 @@ class Directory:
         )
         return response
 
-    def get_relation(
+    async def get_relation(
         self,
         subject_type: Optional[str] = None,
         subject_key: Optional[str] = None,
@@ -268,7 +240,7 @@ class Directory:
         object_key: Optional[str] = None,
         relation_type: Optional[str] = None,
         with_objects: Optional[bool] = None,
-    ) -> GetRelationResponse:
+    ) -> Dict[Relation, Optional[Dict[str, Object]]]:
         """Retrieve a directory relation by the object's type and key, the subject's type and key,
         and relation type name.
         Returns the relation or raises a NotFoundError if an relation with the
@@ -298,11 +270,11 @@ class Directory:
             returned with an Object if with_objects is set to True
         """
 
-        response = self.reader.GetRelation(
+        response = await self.reader.GetRelation(
             GetRelationRequest(
                 param=RelationIdentifier(
-                    object=ObjectIdentifierV2(type=object_type, key=object_key),
-                    subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
+                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
                     relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
                 ),
                 with_objects=with_objects,
@@ -312,10 +284,9 @@ class Directory:
 
         if not len(response.results):
             raise NotFoundError
+        return {"relation": response.results[0], "objects": response.objects}
 
-        return GetRelationResponse(relation=response.results[0], objects=response.objects)
-
-    def set_relation(self, relation: Relation) -> Relation:
+    async def set_relation(self, relation: Relation) -> Relation:
         """Updates a directory relation given the relation name and object type,
         or creates a new relation.
         Returns the created/updated object.
@@ -333,12 +304,12 @@ class Directory:
         a directory relation
         """
 
-        response = self.writer.SetRelation(
+        response = await self.writer.SetRelation(
             SetRelationRequest(relation=relation), metadata=self._metadata
         )
         return response.result
 
-    def delete_relation(
+    async def delete_relation(
         self,
         subject_type: str,
         subject_key: str,
@@ -369,16 +340,18 @@ class Directory:
         None
         """
 
-        relation_identifier = RelationIdentifier(
-            object=ObjectIdentifierV2(type=object_type, key=object_key),
-            subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
-            relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
-        )
-        self.writer.DeleteRelation(
-            DeleteRelationRequest(param=relation_identifier), metadata=self._metadata
+        await self.writer.DeleteRelation(
+            DeleteRelationRequest(
+                param=RelationIdentifier(
+                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+                )
+            ),
+            metadata=self._metadata,
         )
 
-    def check_relation(
+    async def check_relation(
         self,
         subject_type: str,
         subject_key: str,
@@ -410,17 +383,17 @@ class Directory:
         True or False
         """
 
-        response = self.reader.CheckRelation(
+        response = await self.reader.CheckRelation(
             CheckRelationRequest(
-                object=ObjectIdentifierV2(type=object_type, key=object_key),
-                subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
+                object=ObjectIdentifier(type=object_type, key=object_key),
+                subject=ObjectIdentifier(type=subject_type, key=subject_key),
                 relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
             ),
             metadata=self._metadata,
         )
         return response.check
 
-    def check_permission(
+    async def check_permission(
         self,
         subject_type: str,
         subject_key: str,
@@ -451,20 +424,26 @@ class Directory:
         True or False
         """
 
-        response = self.reader.CheckPermission(
+        response = await self.reader.CheckPermission(
             CheckPermissionRequest(
-                object=ObjectIdentifierV2(type=object_type, key=object_key),
-                subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
+                object=ObjectIdentifier(type=object_type, key=object_key),
+                subject=ObjectIdentifier(type=subject_type, key=subject_key),
                 permission=PermissionIdentifier(name=permission),
             ),
             metadata=self._metadata,
         )
         return response.check
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Closes the gRPC channel"""
 
-        self._channel.close()
+        await self._channel.close()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, type, value, traceback):
+        await self.close()
 
     @staticmethod
     def _get_metadata(api_key, tenant_id) -> Tuple:
@@ -476,15 +455,9 @@ class Directory:
         return md
 
     @staticmethod
-    def _channel_credentials(cert) -> grpc.ChannelCredentials:
+    def _channel_credentials(cert) -> ChannelCredentials:
         if cert:
             with open(cert, "rb") as f:
-                return grpc.ssl_channel_credentials(f.read())
+                return ssl_channel_credentials(f.read())
         else:
-            return grpc.ssl_channel_credentials()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.close()
+            return ssl_channel_credentials()
