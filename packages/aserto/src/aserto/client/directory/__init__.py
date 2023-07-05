@@ -113,7 +113,7 @@ class Directory:
         )
         return response
 
-    def get_many_objects(
+    def get_objects_many(
         self,
         objects: Sequence[ObjectIdentifier],
     ) -> List[Object]:

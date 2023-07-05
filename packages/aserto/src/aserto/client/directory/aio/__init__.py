@@ -81,7 +81,7 @@ class Directory:
         )
         return response
 
-    async def get_many_objects(
+    async def get_objects_many(
         self,
         objects: Optional[List[TypedDict("ObjectParams", {"key": str, "type": str})]] = None,
     ) -> List[Object]:
