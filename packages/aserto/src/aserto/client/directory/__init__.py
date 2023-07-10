@@ -298,22 +298,27 @@ class Directory:
             returned with an Object if with_objects is set to True
         """
 
-        response = self.reader.GetRelation(
-            GetRelationRequest(
-                param=RelationIdentifier(
-                    object=ObjectIdentifierV2(type=object_type, key=object_key),
-                    subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
-                    relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+        try:
+            response = self.reader.GetRelation(
+                GetRelationRequest(
+                    param=RelationIdentifier(
+                        object=ObjectIdentifierV2(type=object_type, key=object_key),
+                        subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
+                        relation=RelationTypeIdentifier(
+                            name=relation_type, object_type=object_type
+                        ),
+                    ),
+                    with_objects=with_objects,
                 ),
-                with_objects=with_objects,
-            ),
-            metadata=self._metadata,
-        )
+                metadata=self._metadata,
+            )
 
-        if not len(response.results):
-            raise NotFoundError
+            return GetRelationResponse(relation=response.results[0], objects=response.objects)
 
-        return GetRelationResponse(relation=response.results[0], objects=response.objects)
+        except grpc.RpcError as err:
+            if err.code() == grpc.StatusCode.NOT_FOUND:
+                raise NotFoundError from err
+            raise
 
     def set_relation(self, relation: Relation) -> Relation:
         """Updates a directory relation given the relation name and object type,
