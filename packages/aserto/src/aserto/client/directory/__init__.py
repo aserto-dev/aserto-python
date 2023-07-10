@@ -58,7 +58,7 @@ class GetRelationResponse:
     """
 
     relation: Relation
-    objects: Optional[Mapping[str, Object]]
+    objects: Optional[Mapping[ObjectIdentifier, Object]]
 
 
 class NotFoundError(Exception):
@@ -313,7 +313,13 @@ class Directory:
                 metadata=self._metadata,
             )
 
-            return GetRelationResponse(relation=response.results[0], objects=response.objects)
+            return GetRelationResponse(
+                relation=response.results[0],
+                objects={
+                    ObjectIdentifier(type=k.split(":")[0], key=k.split(":")[1]): obj
+                    for k, obj in response.objects
+                },
+            )
 
         except grpc.RpcError as err:
             if err.code() == grpc.StatusCode.NOT_FOUND:
