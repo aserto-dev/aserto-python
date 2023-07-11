@@ -1,9 +1,10 @@
-from typing import Dict, List, Optional, Tuple, TypedDict
+from dataclasses import asdict, dataclass
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 import grpc.aio as grpc
+from aserto.directory.common.v2 import Object
+from aserto.directory.common.v2 import ObjectIdentifier as ObjectIdentifierV2
 from aserto.directory.common.v2 import (
-    Object,
-    ObjectIdentifier,
     ObjectTypeIdentifier,
     PaginationRequest,
     PaginationResponse,
@@ -36,12 +37,44 @@ from aserto.directory.writer.v2 import (
 from grpc import ChannelCredentials, StatusCode, ssl_channel_credentials
 
 
+@dataclass(frozen=True)
+class ObjectIdentifier:
+    """
+    Unique identifier of a directory object.
+    """
+
+    key: str
+    type: str
+
+
+@dataclass(frozen=True)
+class GetRelationResponse:
+    """
+    Response to get_relation calls.
+
+    Attributes
+    ----
+    relation    The returned relation.
+    objects     If with_relations is True, a mapping from "type:key" to the corresponding object.
+    """
+
+    relation: Relation
+    objects: Optional[Mapping[ObjectIdentifier, Object]]
+
+
 class NotFoundError(Exception):
     pass
 
 
 class Directory:
-    def __init__(self, *, address: str, api_key: str, tenant_id: str, ca_cert: str) -> None:
+    def __init__(
+        self,
+        *,
+        address: str,
+        api_key: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        ca_cert: Optional[str] = None,
+    ) -> None:
         self._channel = grpc.secure_channel(
             target=address, credentials=self._channel_credentials(cert=ca_cert)
         )
@@ -83,7 +116,7 @@ class Directory:
 
     async def get_objects_many(
         self,
-        objects: Optional[List[TypedDict("ObjectParams", {"key": str, "type": str})]] = None,
+        objects: Sequence[ObjectIdentifier],
     ) -> List[Object]:
         """Retrieve a list of directory object using a list of object key and type pairs.
         Returns a list of each objects, if an object with the specified key and type exists.
@@ -99,7 +132,7 @@ class Directory:
             list of directory objects
         """
 
-        identifiers = [ObjectIdentifier(key=x["key"], type=x["type"]) for x in objects]
+        identifiers = [ObjectIdentifierV2(**asdict(x)) for x in objects]
         response = await self.reader.GetObjectMany(
             GetObjectManyRequest(param=identifiers),
             metadata=self._metadata,
@@ -124,7 +157,7 @@ class Directory:
         """
 
         try:
-            identifier = ObjectIdentifier(type=type, key=key)
+            identifier = ObjectIdentifierV2(type=type, key=key)
             response = await self.reader.GetObject(
                 GetObjectRequest(param=identifier), metadata=self._metadata
             )
@@ -174,7 +207,7 @@ class Directory:
         None
         """
 
-        identifier = ObjectIdentifier(type=type, key=key)
+        identifier = ObjectIdentifierV2(type=type, key=key)
         await self.writer.DeleteObject(
             DeleteObjectRequest(param=identifier), metadata=self._metadata
         )
@@ -222,8 +255,8 @@ class Directory:
         response = await self.reader.GetRelations(
             GetRelationsRequest(
                 param=RelationIdentifier(
-                    object=ObjectIdentifier(type=object_type, key=object_key),
-                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    object=ObjectIdentifierV2(type=object_type, key=object_key),
+                    subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
                     relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
                 ),
                 page=page,
@@ -240,7 +273,7 @@ class Directory:
         object_key: Optional[str] = None,
         relation_type: Optional[str] = None,
         with_objects: Optional[bool] = None,
-    ) -> Dict[Relation, Optional[Dict[str, Object]]]:
+    ) -> GetRelationResponse:
         """Retrieve a directory relation by the object's type and key, the subject's type and key,
         and relation type name.
         Returns the relation or raises a NotFoundError if an relation with the
@@ -270,21 +303,33 @@ class Directory:
             returned with an Object if with_objects is set to True
         """
 
-        response = await self.reader.GetRelation(
-            GetRelationRequest(
-                param=RelationIdentifier(
-                    object=ObjectIdentifier(type=object_type, key=object_key),
-                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
-                    relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+        try:
+            response = await self.reader.GetRelation(
+                GetRelationRequest(
+                    param=RelationIdentifier(
+                        object=ObjectIdentifierV2(type=object_type, key=object_key),
+                        subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
+                        relation=RelationTypeIdentifier(
+                            name=relation_type, object_type=object_type
+                        ),
+                    ),
+                    with_objects=with_objects,
                 ),
-                with_objects=with_objects,
-            ),
-            metadata=self._metadata,
-        )
+                metadata=self._metadata,
+            )
 
-        if not len(response.results):
-            raise NotFoundError
-        return {"relation": response.results[0], "objects": response.objects}
+            return GetRelationResponse(
+                relation=response.results[0],
+                objects={
+                    ObjectIdentifier(type=k.split(":")[0], key=k.split(":")[1]): obj
+                    for (k, obj) in response.objects.items()
+                },
+            )
+
+        except grpc.AioRpcError as err:
+            if err.code() == StatusCode.NOT_FOUND:
+                raise NotFoundError from err
+            raise
 
     async def set_relation(self, relation: Relation) -> Relation:
         """Updates a directory relation given the relation name and object type,
@@ -343,8 +388,8 @@ class Directory:
         await self.writer.DeleteRelation(
             DeleteRelationRequest(
                 param=RelationIdentifier(
-                    object=ObjectIdentifier(type=object_type, key=object_key),
-                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    object=ObjectIdentifierV2(type=object_type, key=object_key),
+                    subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
                     relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
                 )
             ),
@@ -385,8 +430,8 @@ class Directory:
 
         response = await self.reader.CheckRelation(
             CheckRelationRequest(
-                object=ObjectIdentifier(type=object_type, key=object_key),
-                subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                object=ObjectIdentifierV2(type=object_type, key=object_key),
+                subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
                 relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
             ),
             metadata=self._metadata,
@@ -426,8 +471,8 @@ class Directory:
 
         response = await self.reader.CheckPermission(
             CheckPermissionRequest(
-                object=ObjectIdentifier(type=object_type, key=object_key),
-                subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                object=ObjectIdentifierV2(type=object_type, key=object_key),
+                subject=ObjectIdentifierV2(type=subject_type, key=subject_key),
                 permission=PermissionIdentifier(name=permission),
             ),
             metadata=self._metadata,
