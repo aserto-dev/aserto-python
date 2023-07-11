@@ -17,9 +17,7 @@ class TestData:
 
 @pytest.fixture(scope="module")
 def directory_client(topaz):
-    client = Directory.connect(
-        address=topaz.directory.address, ca_cert=topaz.directory.ca_cert_path
-    )
+    client = Directory(address=topaz.directory.address, ca_cert=topaz.directory.ca_cert_path)
 
     yield client
 
