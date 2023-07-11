@@ -108,7 +108,15 @@ def directory(directory_client: Directory):
         permission_2=permission_2,
     )
 
-    relations = directory_client.get_relations(page=PaginationRequest(size=30)).results
+    relations_response = directory_client.get_relations(page=PaginationRequest(size=30))
+    relations = relations_response.results
+
+    while relations_response.page.next_token:
+        relations_response = directory_client.get_relations(
+            page=PaginationRequest(size=30, token=relations_response.page.next_token)
+        )
+        relations += relations_response.results
+
     for rel in relations:
         directory_client.delete_relation(
             subject_type=rel.subject.type,
@@ -132,7 +140,15 @@ def directory(directory_client: Directory):
             DeletePermissionRequest(param=PermissionIdentifier(name=permission.name))
         )
 
-    objects = directory_client.get_objects(page=PaginationRequest(size=30)).results
+    objects_response = directory_client.get_objects(page=PaginationRequest(size=30))
+    objects = objects_response.results
+
+    while objects_response.page.next_token:
+        objects_response = directory_client.get_objects(
+            page=PaginationRequest(size=30, token=objects_response.page.next_token)
+        )
+        objects += objects_response.results
+
     for obj in objects:
         directory_client.delete_object(key=obj.key, type=obj.type)
 
