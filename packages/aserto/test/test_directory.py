@@ -201,7 +201,10 @@ def test_get_relation_with_objects(directory):
     assert rel.relation.relation == directory.relation_1.relation
     assert rel.relation.object.key == directory.relation_1.object.key
     assert rel.relation.subject.key == directory.relation_1.subject.key
-    assert f"{directory.relation_1.object.type}:{directory.relation_1.object.key}" in rel.objects
+    assert (
+        ObjectIdentifier(type=directory.relation_1.object.type, key=directory.relation_1.object.key)
+        in rel.objects
+    )
 
 
 def test_get_relations(directory):
