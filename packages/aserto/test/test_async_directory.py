@@ -137,6 +137,28 @@ async def test_get_relation(directory_async):
 
 
 @pytest.mark.asyncio
+async def test_get_relation_with_objects(directory_async):
+    rel = await directory_async.client.get_relation(
+        subject_type=directory_async.relation_1.subject.type,
+        subject_key=directory_async.relation_1.subject.key,
+        object_type=directory_async.relation_1.object.type,
+        object_key=directory_async.relation_1.object.key,
+        relation_type=directory_async.relation_1.relation,
+        with_objects=True,
+    )
+
+    assert rel.relation.relation == directory_async.relation_1.relation
+    assert rel.relation.object.key == directory_async.relation_1.object.key
+    assert rel.relation.subject.key == directory_async.relation_1.subject.key
+    assert (
+        ObjectIdentifier(
+            type=directory_async.relation_1.object.type, key=directory_async.relation_1.object.key
+        )
+        in rel.objects
+    )
+
+
+@pytest.mark.asyncio
 async def test_check_relation(directory_async):
     check_true = await directory_async.client.check_relation(
         subject_type=directory_async.relation_1.subject.type,
