@@ -123,6 +123,8 @@ def test_get_objects_by_type(directory):
 def test_get_objects(directory):
     objs = directory.client.get_objects(page=PaginationRequest(size=10)).results
     assert directory.obj_1 in objs
+    assert directory.obj_2 in objs
+    assert directory.obj_3 in objs
     assert len(objs) == 3
 
 
@@ -133,14 +135,15 @@ def test_get_objects_many(directory):
             ObjectIdentifier(key=directory.obj_2.key, type=directory.obj_2.type),
         ]
     )
+    assert directory.obj_1 in objs
+    assert directory.obj_2 in objs
     assert len(objs) == 2
 
 
 def test_set_object(directory):
-    key = uuid.uuid4().hex
+    obj = directory.client.get_object(key=directory.obj_1.key, type=directory.obj_1.type)
+    updated_obj = directory.client.set_object(
+        Object(key=obj.type, type=obj.type, hash=obj.hash, display_name="changed user")
+    )
 
-    obj = directory.client.set_object(Object(key=key, type="user", display_name="test user"))
-
-    assert obj.key == key
-    assert obj.type == "user"
-    assert obj.display_name == "test user"
+    assert updated_obj.display_name == "changed user"
