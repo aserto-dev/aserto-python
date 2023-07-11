@@ -3,7 +3,14 @@ from dataclasses import dataclass
 
 import pytest
 
-from aserto.client.directory import Directory, NotFoundError, Object, Relation
+from aserto.client.directory import (
+    Directory,
+    NotFoundError,
+    Object,
+    ObjectIdentifier,
+    PaginationRequest,
+    Relation,
+)
 
 
 @dataclass(frozen=True)
@@ -11,6 +18,7 @@ class TestData:
     client: Directory
     obj_1: Object
     obj_2: Object
+    obj_3: Object
     relation_1: Relation
     relation_2: Relation
 
@@ -45,7 +53,7 @@ def directory(directory_client):
 
     relation_2 = directory_client.set_relation(
         relation={
-            "subject": {"key": obj_2.key, "type": obj_2.type},
+            "subject": {"key": obj_1.key, "type": obj_1.type},
             "object": {"key": obj_3.key, "type": obj_3.type},
             "relation": "manager",
         }
@@ -55,29 +63,24 @@ def directory(directory_client):
         client=directory_client,
         obj_1=obj_1,
         obj_2=obj_2,
+        obj_3=obj_3,
         relation_1=relation_1,
         relation_2=relation_2,
     )
 
-    directory_client.delete_relation(
-        subject_type=relation_1.subject.type,
-        subject_key=relation_1.subject.type,
-        object_type=relation_1.object.type,
-        object_key=relation_1.object.key,
-        relation_type=relation_1.relation,
-    )
+    relations = directory_client.get_relations(page=PaginationRequest(size=30)).results
+    for rel in relations:
+        directory_client.delete_relation(
+            subject_type=rel.subject.type,
+            subject_key=rel.subject.type,
+            object_type=rel.object.type,
+            object_key=rel.object.key,
+            relation_type=rel.relation,
+        )
 
-    directory_client.delete_relation(
-        subject_type=relation_2.subject.type,
-        subject_key=relation_2.subject.type,
-        object_type=relation_2.object.type,
-        object_key=relation_2.object.key,
-        relation_type=relation_2.relation,
-    )
-
-    directory_client.delete_object(key=obj_1.key, type=obj_1.type)
-    directory_client.delete_object(key=obj_2.key, type=obj_2.type)
-    directory_client.delete_object(key=obj_3.key, type=obj_3.type)
+    objects = directory_client.get_objects(page=PaginationRequest(size=30)).results
+    for obj in objects:
+        directory_client.delete_object(key=obj.key, type=obj.type)
 
 
 def test_delete_object(directory):
@@ -91,7 +94,49 @@ def test_get_object(directory):
     obj = directory.client.get_object(key=directory.obj_1.key, type=directory.obj_1.type)
     assert obj.key == directory.obj_1.key
     assert obj.type == directory.obj_1.type
-    # assert obj.display_name == "test user"
+    assert obj.display_name == directory.obj_1.display_name
+
+
+def test_object_not_found(directory):
+    key = uuid.uuid4().hex
+    with pytest.raises(NotFoundError):
+        directory.client.get_object(key=key, type="user")
+
+
+def test_object_invalid_arg(directory):
+    with pytest.raises(TypeError):
+        directory.client.get_object(key=directory.obj_1.key)
+
+
+def test_get_objects_by_type(directory):
+    objs = directory.client.get_objects(
+        object_type=directory.obj_1.type, page=PaginationRequest(size=10)
+    ).results
+    print(objs)
+    assert directory.obj_1 in objs
+    assert directory.obj_1.type == directory.obj_3.type
+    assert directory.obj_1.type != directory.obj_2.type
+    assert directory.obj_3 in objs
+    # assert directory.obj_2 not in objs
+
+
+def test_get_objects(directory):
+    objs = directory.client.get_objects(page=PaginationRequest(size=10)).results
+    assert directory.obj_1 in objs
+    assert directory.obj_2 in objs
+    assert directory.obj_3 in objs
+
+
+def test_get_objects_many(directory):
+    objs = directory.client.get_objects_many(
+        objects=[
+            ObjectIdentifier(key=directory.obj_1.key, type=directory.obj_1.type),
+            ObjectIdentifier(key=directory.obj_2.key, type=directory.obj_2.type),
+        ]
+    )
+    assert directory.obj_1 in objs
+    assert directory.obj_2 in objs
+    assert directory.obj_3 not in objs
 
 
 def test_set_object(directory):
