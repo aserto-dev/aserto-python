@@ -150,9 +150,16 @@ async def test_get_relation_with_objects(directory_async):
     assert rel.relation.relation == directory_async.relation_1.relation
     assert rel.relation.object.key == directory_async.relation_1.object.key
     assert rel.relation.subject.key == directory_async.relation_1.subject.key
+    assert len(rel.objects) == 2
     assert (
         ObjectIdentifier(
             type=directory_async.relation_1.object.type, key=directory_async.relation_1.object.key
+        )
+        in rel.objects
+    )
+    assert (
+        ObjectIdentifier(
+            type=directory_async.relation_1.subject.type, key=directory_async.relation_1.subject.key
         )
         in rel.objects
     )

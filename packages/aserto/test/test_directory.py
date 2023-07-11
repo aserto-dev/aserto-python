@@ -281,8 +281,15 @@ def test_get_relation_with_objects(directory: SetupData):
     assert rel.relation.relation == directory.relation_1.relation
     assert rel.relation.object.key == directory.relation_1.object.key
     assert rel.relation.subject.key == directory.relation_1.subject.key
+    assert len(rel.objects) == 2
     assert (
         ObjectIdentifier(type=directory.relation_1.object.type, key=directory.relation_1.object.key)
+        in rel.objects
+    )
+    assert (
+        ObjectIdentifier(
+            type=directory.relation_1.subject.type, key=directory.relation_1.subject.key
+        )
         in rel.objects
     )
 
