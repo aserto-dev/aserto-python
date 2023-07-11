@@ -48,6 +48,7 @@ async def async_directory_client(topaz):
 async def directory_async(async_directory_client):
     key_1 = uuid.uuid4().hex
     key_2 = uuid.uuid4().hex
+    key_3 = uuid.uuid4().hex
 
     obj_1 = await async_directory_client.set_object(
         Object(key=key_1, type="user", display_name="test user")
@@ -56,7 +57,7 @@ async def directory_async(async_directory_client):
         Object(key=key_2, type="group", display_name="test group")
     )
     obj_3 = await async_directory_client.set_object(
-        Object(key=key_2, type="user", display_name="another test user")
+        Object(key=key_3, type="user", display_name="another test user")
     )
 
     relation_1 = await async_directory_client.set_relation(
@@ -89,7 +90,7 @@ async def directory_async(async_directory_client):
     for rel in relations:
         await async_directory_client.delete_relation(
             subject_type=rel.subject.type,
-            subject_key=rel.subject.type,
+            subject_key=rel.subject.key,
             object_type=rel.object.type,
             object_key=rel.object.key,
             relation_type=rel.relation,
@@ -106,6 +107,7 @@ async def test_get_object(directory_async):
     obj = await directory_async.client.get_object(
         key=directory_async.obj_1.key, type=directory_async.obj_1.type
     )
+
     assert obj.key == directory_async.obj_1.key
     assert obj.type == directory_async.obj_1.type
     assert obj.display_name == directory_async.obj_1.display_name

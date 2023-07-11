@@ -37,11 +37,12 @@ def directory_client(topaz):
 def directory(directory_client):
     key_1 = uuid.uuid4().hex
     key_2 = uuid.uuid4().hex
+    key_3 = uuid.uuid4().hex
 
     obj_1 = directory_client.set_object(Object(key=key_1, type="user", display_name="test user"))
     obj_2 = directory_client.set_object(Object(key=key_2, type="group", display_name="test group"))
     obj_3 = directory_client.set_object(
-        Object(key=key_2, type="user", display_name="another test user")
+        Object(key=key_3, type="user", display_name="another test user")
     )
 
     relation_1 = directory_client.set_relation(
@@ -73,7 +74,7 @@ def directory(directory_client):
     for rel in relations:
         directory_client.delete_relation(
             subject_type=rel.subject.type,
-            subject_key=rel.subject.type,
+            subject_key=rel.subject.key,
             object_type=rel.object.type,
             object_key=rel.object.key,
             relation_type=rel.relation,
@@ -92,6 +93,7 @@ def test_delete_object(directory):
 
 def test_get_object(directory):
     obj = directory.client.get_object(key=directory.obj_1.key, type=directory.obj_1.type)
+
     assert obj.key == directory.obj_1.key
     assert obj.type == directory.obj_1.type
     assert obj.display_name == directory.obj_1.display_name
@@ -113,6 +115,7 @@ def test_get_objects_by_type(directory):
     objs = directory.client.get_objects(
         object_type=directory.obj_1.type, page=PaginationRequest(size=10)
     ).results
+
     assert directory.obj_1 in objs
     assert directory.obj_1.type == directory.obj_3.type
     assert directory.obj_1.type != directory.obj_2.type
@@ -122,6 +125,7 @@ def test_get_objects_by_type(directory):
 
 def test_get_objects(directory):
     objs = directory.client.get_objects(page=PaginationRequest(size=10)).results
+
     assert directory.obj_1 in objs
     assert directory.obj_2 in objs
     assert directory.obj_3 in objs
@@ -135,6 +139,7 @@ def test_get_objects_many(directory):
             ObjectIdentifier(key=directory.obj_2.key, type=directory.obj_2.type),
         ]
     )
+
     assert directory.obj_1 in objs
     assert directory.obj_2 in objs
     assert len(objs) == 2
@@ -149,22 +154,23 @@ def test_set_object(directory):
     assert updated_obj.display_name == "changed user"
 
 
-# def test_delete_relation(directory):
-#     directory.client.delete_relation(
-#         subject_type=directory.relation_1.subject.type,
-#         subject_key=directory.relation_1.subject.key,
-#         object_type=directory.relation_1.object.type,
-#         object_key=directory.relation_1.object.key,
-#         relation_type=directory.relation_1.relation,
-#     )
-#     with pytest.raises(NotFoundError):
-#         directory.client.get_relation(
-#             subject_type=directory.relation_1.subject.type,
-#             subject_key=directory.relation_1.subject.key,
-#             object_type=directory.relation_1.object.type,
-#             object_key=directory.relation_1.object.key,
-#             relation_type=directory.relation_1.relation,
-#         )
+def test_delete_relation(directory):
+    directory.client.delete_relation(
+        subject_type=directory.relation_1.subject.type,
+        subject_key=directory.relation_1.subject.key,
+        object_type=directory.relation_1.object.type,
+        object_key=directory.relation_1.object.key,
+        relation_type=directory.relation_1.relation,
+    )
+
+    with pytest.raises(NotFoundError):
+        directory.client.get_relation(
+            subject_type=directory.relation_1.subject.type,
+            subject_key=directory.relation_1.subject.key,
+            object_type=directory.relation_1.object.type,
+            object_key=directory.relation_1.object.key,
+            relation_type=directory.relation_1.relation,
+        )
 
 
 def test_get_relation(directory):
@@ -175,6 +181,7 @@ def test_get_relation(directory):
         object_key=directory.relation_1.object.key,
         relation_type=directory.relation_1.relation,
     )
+
     assert rel.relation.relation == directory.relation_1.relation
     assert rel.relation.object.key == directory.relation_1.object.key
     assert rel.relation.subject.key == directory.relation_1.subject.key
@@ -190,19 +197,18 @@ def test_get_relation_with_objects(directory):
         relation_type=directory.relation_1.relation,
         with_objects=True,
     )
+
     assert rel.relation.relation == directory.relation_1.relation
     assert rel.relation.object.key == directory.relation_1.object.key
     assert rel.relation.subject.key == directory.relation_1.subject.key
     assert f"{directory.relation_1.object.type}:{directory.relation_1.object.key}" in rel.objects
 
 
-# def test_get_relations(directory):
-#     rels = directory.client.get_relations(page=PaginationRequest(size=10)).results
-#     # print(json.dumps(MessageToJson(rels), indent=4))
-#     print(rels)
-#     assert directory.relation_1 in rels
-#     assert directory.relation_2 in rels
-#     assert len(rels) == 2
+def test_get_relations(directory):
+    rels = directory.client.get_relations(page=PaginationRequest(size=10)).results
+
+    assert directory.relation_2 in rels
+    assert len(rels) == 2
 
 
 def test_set_relation(directory):
@@ -213,6 +219,7 @@ def test_set_relation(directory):
         object_key=directory.relation_1.object.key,
         relation_type=directory.relation_1.relation,
     )
+
     updated_rel = directory.client.set_relation(
         relation={
             "subject": {"key": rel.relation.subject.key, "type": rel.relation.subject.type},
@@ -232,6 +239,7 @@ def test_check_relation(directory):
         object_key=directory.relation_1.object.key,
         relation_type=directory.relation_1.relation,
     )
+
     check_false = directory.client.check_relation(
         subject_type=directory.relation_1.subject.type,
         subject_key=directory.relation_1.subject.key,
@@ -239,6 +247,7 @@ def test_check_relation(directory):
         object_key=directory.relation_1.object.key,
         relation_type=directory.relation_2.relation,
     )
+
     assert check_true == True
     assert check_false == False
 
