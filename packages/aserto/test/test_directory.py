@@ -15,7 +15,7 @@ from aserto.client.directory import (
 
 
 @dataclass(frozen=True)
-class TestData:
+class SetupData:
     client: Directory
     obj_1: Object
     obj_2: Object
@@ -60,7 +60,7 @@ def directory(directory_client):
         }
     )
 
-    yield TestData(
+    yield SetupData(
         client=directory_client,
         obj_1=obj_1,
         obj_2=obj_2,
@@ -147,3 +147,101 @@ def test_set_object(directory):
     )
 
     assert updated_obj.display_name == "changed user"
+
+
+# def test_delete_relation(directory):
+#     directory.client.delete_relation(
+#         subject_type=directory.relation_1.subject.type,
+#         subject_key=directory.relation_1.subject.key,
+#         object_type=directory.relation_1.object.type,
+#         object_key=directory.relation_1.object.key,
+#         relation_type=directory.relation_1.relation,
+#     )
+#     with pytest.raises(NotFoundError):
+#         directory.client.get_relation(
+#             subject_type=directory.relation_1.subject.type,
+#             subject_key=directory.relation_1.subject.key,
+#             object_type=directory.relation_1.object.type,
+#             object_key=directory.relation_1.object.key,
+#             relation_type=directory.relation_1.relation,
+#         )
+
+
+def test_get_relation(directory):
+    rel = directory.client.get_relation(
+        subject_type=directory.relation_1.subject.type,
+        subject_key=directory.relation_1.subject.key,
+        object_type=directory.relation_1.object.type,
+        object_key=directory.relation_1.object.key,
+        relation_type=directory.relation_1.relation,
+    )
+    assert rel.relation.relation == directory.relation_1.relation
+    assert rel.relation.object.key == directory.relation_1.object.key
+    assert rel.relation.subject.key == directory.relation_1.subject.key
+    assert rel.objects == {}
+
+
+def test_get_relation_with_objects(directory):
+    rel = directory.client.get_relation(
+        subject_type=directory.relation_1.subject.type,
+        subject_key=directory.relation_1.subject.key,
+        object_type=directory.relation_1.object.type,
+        object_key=directory.relation_1.object.key,
+        relation_type=directory.relation_1.relation,
+        with_objects=True,
+    )
+    assert rel.relation.relation == directory.relation_1.relation
+    assert rel.relation.object.key == directory.relation_1.object.key
+    assert rel.relation.subject.key == directory.relation_1.subject.key
+    assert f"{directory.relation_1.object.type}:{directory.relation_1.object.key}" in rel.objects
+
+
+# def test_get_relations(directory):
+#     rels = directory.client.get_relations(page=PaginationRequest(size=10)).results
+#     # print(json.dumps(MessageToJson(rels), indent=4))
+#     print(rels)
+#     assert directory.relation_1 in rels
+#     assert directory.relation_2 in rels
+#     assert len(rels) == 2
+
+
+def test_set_relation(directory):
+    rel = directory.client.get_relation(
+        subject_type=directory.relation_1.subject.type,
+        subject_key=directory.relation_1.subject.key,
+        object_type=directory.relation_1.object.type,
+        object_key=directory.relation_1.object.key,
+        relation_type=directory.relation_1.relation,
+    )
+    updated_rel = directory.client.set_relation(
+        relation={
+            "subject": {"key": rel.relation.subject.key, "type": rel.relation.subject.type},
+            "object": {"key": rel.relation.object.key, "type": rel.relation.object.type},
+            "relation": "changed relation",
+        }
+    )
+
+    assert updated_rel.relation == "changed relation"
+
+
+def test_check_relation(directory):
+    check_true = directory.client.check_relation(
+        subject_type=directory.relation_1.subject.type,
+        subject_key=directory.relation_1.subject.key,
+        object_type=directory.relation_1.object.type,
+        object_key=directory.relation_1.object.key,
+        relation_type=directory.relation_1.relation,
+    )
+    check_false = directory.client.check_relation(
+        subject_type=directory.relation_1.subject.type,
+        subject_key=directory.relation_1.subject.key,
+        object_type=directory.relation_1.object.type,
+        object_key=directory.relation_1.object.key,
+        relation_type=directory.relation_2.relation,
+    )
+    assert check_true == True
+    assert check_false == False
+
+
+# def test_check_permission(directory):
+#     assert True == True
