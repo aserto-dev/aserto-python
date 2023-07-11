@@ -1,13 +1,10 @@
 import os.path
 import subprocess
-import uuid
 from dataclasses import dataclass
 from typing import Optional
 
 import grpc
 import pytest
-
-from aserto.client.directory import Directory, Object
 
 
 @dataclass(frozen=True)
@@ -84,33 +81,3 @@ def read_cert(path: Optional[str]) -> Optional[bytes]:
 
     with open(path, "rb") as f:
         return f.read()
-
-
-@pytest.fixture
-def directory_client(topaz):
-    directory = Directory.connect(
-        address=topaz.directory.address, ca_cert=topaz.directory.ca_cert_path
-    )
-
-    yield directory
-
-
-@pytest.fixture
-def directory_setup(topaz, directory_client):
-    directory = directory_client
-
-    key_1 = uuid.uuid4().hex
-    key_2 = uuid.uuid4().hex
-
-    obj_1 = directory.set_object(Object(key=key_1, type="user", display_name="test user"))
-    obj_2 = directory.set_object(Object(key=key_2, type="group", display_name="test group"))
-
-    relation = directory.set_relation(
-        relation={
-            "subject": {"key": obj_1.key, "type": obj_1.type},
-            "object": {"key": obj_2.key, "type": obj_2.type},
-            "relation": "member",
-        }
-    )
-
-    yield obj_1, obj_2, relation
