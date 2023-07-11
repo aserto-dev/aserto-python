@@ -317,7 +317,7 @@ class Directory:
                 relation=response.results[0],
                 objects={
                     ObjectIdentifier(type=k.split(":")[0], key=k.split(":")[1]): obj
-                    for k, obj in response.objects
+                    for (k, obj) in response.objects.items()
                 },
             )
 
