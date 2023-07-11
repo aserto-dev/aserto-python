@@ -184,6 +184,18 @@ def test_get_objects(directory: SetupData):
     assert len(objs) == 3
 
 
+def test_get_objects_paging(directory: SetupData):
+    objs_response_1 = directory.client.get_objects(page=PaginationRequest(size=2))
+    assert len(objs_response_1.results) == 2
+    assert objs_response_1.page.next_token
+
+    objs_response_2 = directory.client.get_objects(
+        page=PaginationRequest(size=2, token=objs_response_1.page.next_token)
+    )
+    assert len(objs_response_2.results) == 1
+    assert not objs_response_2.page.next_token
+
+
 def test_get_objects_many(directory: SetupData):
     objs = directory.client.get_objects_many(
         objects=[
