@@ -1,6 +1,8 @@
 import os.path
 import subprocess
+import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Optional
 
 import grpc
@@ -23,11 +25,28 @@ class Topaz:
 
 @pytest.fixture(scope="package")
 def topaz():
+    topaz_stop()
+
+    topaz_db_dir = os.path.expanduser("~/.config/topaz/db")
+
+    if os.path.exists(f"{topaz_db_dir}/directory.db"):
+        os.rename(f"{topaz_db_dir}/directory.db", f"{topaz_db_dir}/directory.bak")
+
     svc = topaz_configure()
     topaz_start()
     topaz_wait_for_ready(svc.authorizer)
     yield svc
     topaz_stop()
+
+    subprocess.run(
+        "rm ~/.config/topaz/db/directory.db",
+        shell=True,
+        capture_output=True,
+        check=True,
+    )
+
+    if os.path.exists(f"{topaz_db_dir}/directory.bak"):
+        os.rename(f"{topaz_db_dir}/directory.bak", f"{topaz_db_dir}/directory.db")
 
 
 def topaz_configure() -> Topaz:
@@ -65,6 +84,11 @@ def topaz_stop() -> None:
 
 
 def topaz_wait_for_ready(svc: Service) -> None:
+    t0 = datetime.now()
+    while not os.path.exists(svc.ca_cert_path):
+        if t0 + timedelta(minutes=1) > datetime.now():
+            raise TimeoutError
+        time.sleep(1)
     channel = connect(svc)
     grpc.channel_ready_future(channel).result()
 
