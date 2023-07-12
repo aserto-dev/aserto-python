@@ -269,6 +269,26 @@ async def test_set_object(directory_async: SetupData):
 
 
 @pytest.mark.asyncio
+async def test_delete_relation(directory_async: SetupData):
+    await directory_async.client.delete_relation(
+        subject_type=directory_async.relation_1.subject.type,
+        subject_key=directory_async.relation_1.subject.key,
+        object_type=directory_async.relation_1.object.type,
+        object_key=directory_async.relation_1.object.key,
+        relation_type=directory_async.relation_1.relation,
+    )
+
+    with pytest.raises(NotFoundError):
+        await directory_async.client.get_relation(
+            subject_type=directory_async.relation_1.subject.type,
+            subject_key=directory_async.relation_1.subject.key,
+            object_type=directory_async.relation_1.object.type,
+            object_key=directory_async.relation_1.object.key,
+            relation_type=directory_async.relation_1.relation,
+        )
+
+
+@pytest.mark.asyncio
 async def test_get_relation(directory_async: SetupData):
     rel = await directory_async.client.get_relation(
         subject_type=directory_async.relation_1.subject.type,
@@ -314,6 +334,36 @@ async def test_get_relation_with_objects(directory_async: SetupData):
 
 
 @pytest.mark.asyncio
+async def test_get_relations(directory_async: SetupData):
+    rels_response = await directory_async.client.get_relations(page=PaginationRequest(size=10))
+    rels = rels_response.results
+
+    assert directory_async.relation_2 in rels
+    assert len(rels) == 2
+
+
+@pytest.mark.asyncio
+async def test_set_relation(directory_async: SetupData):
+    rel = await directory_async.client.get_relation(
+        subject_type=directory_async.relation_1.subject.type,
+        subject_key=directory_async.relation_1.subject.key,
+        object_type=directory_async.relation_1.object.type,
+        object_key=directory_async.relation_1.object.key,
+        relation_type=directory_async.relation_1.relation,
+    )
+
+    updated_rel = await directory_async.client.set_relation(
+        relation={
+            "subject": {"key": rel.relation.subject.key, "type": rel.relation.subject.type},
+            "object": {"key": rel.relation.object.key, "type": rel.relation.object.type},
+            "relation": "changed relation",
+        }
+    )
+
+    assert updated_rel.relation == "changed relation"
+
+
+@pytest.mark.asyncio
 async def test_check_relation(directory_async: SetupData):
     check_true = await directory_async.client.check_relation(
         subject_type=directory_async.relation_1.subject.type,
@@ -329,6 +379,28 @@ async def test_check_relation(directory_async: SetupData):
         object_type=directory_async.relation_1.object.type,
         object_key=directory_async.relation_1.object.key,
         relation_type=directory_async.relation_2.relation,
+    )
+
+    assert check_true == True
+    assert check_false == False
+
+
+@pytest.mark.asyncio
+async def test_check_permission(directory_async: SetupData):
+    check_true = await directory_async.client.check_permission(
+        object_key=directory_async.relation_2.object.key,
+        object_type=directory_async.relation_2.object.type,
+        subject_key=directory_async.relation_2.subject.key,
+        subject_type=directory_async.relation_2.subject.type,
+        permission=directory_async.permission_2.name,
+    )
+
+    check_false = await directory_async.client.check_permission(
+        subject_type=directory_async.relation_1.subject.type,
+        subject_key=directory_async.relation_1.subject.key,
+        object_type=directory_async.relation_1.object.type,
+        object_key=directory_async.relation_1.object.key,
+        permission=directory_async.permission_2.name,
     )
 
     assert check_true == True
