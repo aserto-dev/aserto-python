@@ -8,9 +8,11 @@ from aserto.directory.common.v2 import (
     ObjectTypeIdentifier,
     PaginationRequest,
     PaginationResponse,
+    Permission,
     PermissionIdentifier,
     Relation,
     RelationIdentifier,
+    RelationType,
     RelationTypeIdentifier,
 )
 from aserto.directory.exporter.v2 import ExporterStub
@@ -29,9 +31,13 @@ from aserto.directory.reader.v2 import (
 )
 from aserto.directory.writer.v2 import (
     DeleteObjectRequest,
+    DeletePermissionRequest,
     DeleteRelationRequest,
+    DeleteRelationTypeRequest,
     SetObjectRequest,
+    SetPermissionRequest,
     SetRelationRequest,
+    SetRelationTypeRequest,
     WriterStub,
 )
 from grpc import ChannelCredentials, StatusCode, ssl_channel_credentials
