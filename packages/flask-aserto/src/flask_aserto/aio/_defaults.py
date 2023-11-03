@@ -1,5 +1,5 @@
 import re
-from typing import Callable
+from typing import Awaitable, Callable
 
 from aserto.client import ResourceContext, Identity
 from flask import request
@@ -11,22 +11,28 @@ __all__ = [
     "_policy_path_heuristic",
 ]
 
-IdentityMapper = Callable[[], Identity]
-StringMapper = Callable[[], str]
-ResourceMapper = Callable[[], ResourceContext]
+
 DEFAULT_DISPLAY_STATE_MAP_ENDPOINT = "/__displaystatemap"
 
+IdentityMapper = Callable[[], Awaitable[Identity]]
+StringMapper = Callable[[], Awaitable[str]]
+ResourceMapper = Callable[[], Awaitable[ResourceContext]]
 
-def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT() -> ResourceContext:
-    return request.view_args or {}
+async def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT() -> ResourceMapper:
+    async def view_args() -> ResourceContext:
+        return request.view_args or {}
+    
+    return view_args
 
 
-def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP() -> ResourceContext:
-    return request.get_json(silent=True) or {}
+async def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP() -> ResourceMapper:
+    async def get_json_from_request() -> ResourceContext:
+        return request.get_json(silent=True) or {}
+    return get_json_from_request
 
 
 def create_default_policy_path_resolver(policy_root: str) -> StringMapper:
-    def default_policy_path_resolver() -> str:
+    async def default_policy_path_resolver() -> str:
         rule_string = str(request.url_rule)
         policy_sub_path = policy_path_heuristic(rule_string)
         return f"{policy_root}.{request.method.upper()}{policy_sub_path}"

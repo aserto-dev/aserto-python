@@ -1,4 +1,0 @@
-version: v1beta1
-plugins:
-- name: python_betterproto
-  out: src/aserto_authorizer_grpc
