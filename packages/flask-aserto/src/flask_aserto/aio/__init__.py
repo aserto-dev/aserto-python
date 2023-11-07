@@ -30,7 +30,7 @@ class AuthorizationError(Exception):
 Handler = TypeVar("Handler", bound=Callable[..., Union[Response, Awaitable[Response]]])
 
 class AsertoMiddleware:
-    async def __init__(
+    def __init__(
         self,
         *,
         authorizer_options: AuthorizerOptions,
@@ -56,7 +56,7 @@ class AsertoMiddleware:
         self._resource_context_provider = (
             resource_context_provider
             if resource_context_provider is not None
-            else await DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT()
+            else DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT()
         )
 
     async def _generate_client(self) -> AuthorizerClient:
@@ -157,14 +157,14 @@ class AsertoMiddleware:
         if handler is not None:
             if not callable(handler):
                 raise arguments_error
-            return await self._authorize(handler)
+            return self._authorize(handler)
 
         if args:
             raise arguments_error
 
         return self._with_overrides(**kwargs)._authorize
 
-    async def _authorize(self, handler: Handler) -> Handler:
+    def _authorize(self, handler: Handler) -> Handler:
         if self._policy_instance_name == None:
             raise TypeError(f"{self._policy_instance_name}() should not be None")
         
@@ -190,7 +190,7 @@ class AsertoMiddleware:
             if not decisions["allowed"]:
                 raise AuthorizationError(policy_instance_name=self._policy_instance_name or "", policy_path=policy_path)
 
-            return handler(*args, **kwargs)
+            return await handler(*args, **kwargs)
 
         return cast(Handler, decorated)
 
@@ -205,7 +205,7 @@ class AsertoMiddleware:
         async def __displaystatemap() -> Response:
             nonlocal resource_context_provider
             if resource_context_provider is None:
-                resource_context_provider = await DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
+                resource_context_provider = DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
 
             client, resource_context = await gather(
                 self._generate_client(),

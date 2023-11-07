@@ -18,14 +18,14 @@ IdentityMapper = Callable[[], Awaitable[Identity]]
 StringMapper = Callable[[], Awaitable[str]]
 ResourceMapper = Callable[[], Awaitable[ResourceContext]]
 
-async def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT() -> ResourceMapper:
+def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT() -> ResourceMapper:
     async def view_args() -> ResourceContext:
         return request.view_args or {}
     
     return view_args
 
 
-async def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP() -> ResourceMapper:
+def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP() -> ResourceMapper:
     async def get_json_from_request() -> ResourceContext:
         return request.get_json(silent=True) or {}
     return get_json_from_request
