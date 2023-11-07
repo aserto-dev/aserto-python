@@ -12,10 +12,10 @@ from ._defaults import (
     DEFAULT_DISPLAY_STATE_MAP_ENDPOINT,
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP,
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT,
-    create_default_policy_path_resolver,
     IdentityMapper,
+    ResourceMapper,
     StringMapper,
-    ResourceMapper
+    create_default_policy_path_resolver,
 )
 
 __all__ = ["AsertoMiddleware", "AuthorizationError"]
@@ -27,20 +27,21 @@ class AuthorizationError(Exception):
     policy_path: str
 
 
-Handler = TypeVar("Handler", bound=Callable[..., Union[Response, Awaitable[Response]]])
+Handler = Callable[..., Awaitable[Response]]
+
 
 class AsertoMiddleware:
-    async def __init__(
+    def __init__(
         self,
         *,
         authorizer_options: AuthorizerOptions,
         policy_path_root: str,
         identity_provider: IdentityMapper,
-        policy_instance_name: Optional[str]= None,
-        policy_instance_label: Optional[str]= None,
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         policy_path_resolver: Optional[StringMapper] = None,
         resource_context_provider: Optional[ResourceMapper] = None,
-    ):
+    ) -> None:
         self._authorizer_options = authorizer_options
         self._identity_provider = identity_provider
         self._policy_instance_name = policy_instance_name
@@ -56,7 +57,7 @@ class AsertoMiddleware:
         self._resource_context_provider = (
             resource_context_provider
             if resource_context_provider is not None
-            else await DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT()
+            else DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT()
         )
 
     async def _generate_client(self) -> AuthorizerClient:
@@ -76,7 +77,9 @@ class AsertoMiddleware:
                 policy_path_root=kwargs.get("policy_path_root", self._policy_path_root),
                 identity_provider=kwargs.get("identity_provider", self._identity_provider),
                 policy_instance_name=kwargs.get("policy_instance_name", self._policy_instance_name),
-                policy_instance_label=kwargs.get("policy_instance_label", self._policy_instance_label),
+                policy_instance_label=kwargs.get(
+                    "policy_instance_label", self._policy_instance_label
+                ),
                 policy_path_resolver=kwargs.get("policy_path_resolver", self._policy_path_resolver),
                 resource_context_provider=kwargs.get(
                     "resource_context_provider", self._resource_context_provider
@@ -108,7 +111,7 @@ class AsertoMiddleware:
 
     async def _is_allowed(self, decision: str) -> bool:
         client = await self._generate_client()
-        resource_context = await  self._resource_context_provider()
+        resource_context = await self._resource_context_provider()
         policy_path = await self._policy_path_resolver()
 
         decisions = await client.decisions(
@@ -157,17 +160,17 @@ class AsertoMiddleware:
         if handler is not None:
             if not callable(handler):
                 raise arguments_error
-            return await self._authorize(handler)
+            return self._authorize(handler)
 
         if args:
             raise arguments_error
 
         return self._with_overrides(**kwargs)._authorize
 
-    async def _authorize(self, handler: Handler) -> Handler:
+    def _authorize(self, handler: Handler) -> Handler:
         if self._policy_instance_name == None:
             raise TypeError(f"{self._policy_instance_name}() should not be None")
-        
+
         if self._policy_instance_label == None:
             self._policy_instance_label = self._policy_instance_name
 
@@ -188,13 +191,15 @@ class AsertoMiddleware:
             )
 
             if not decisions["allowed"]:
-                raise AuthorizationError(policy_instance_name=self._policy_instance_name or "", policy_path=policy_path)
+                raise AuthorizationError(
+                    policy_instance_name=self._policy_instance_name or "", policy_path=policy_path
+                )
 
-            return handler(*args, **kwargs)
+            return await handler(*args, **kwargs)
 
         return cast(Handler, decorated)
 
-    async def register_display_state_map(
+    def register_display_state_map(
         self,
         app: Flask,
         *,
@@ -205,11 +210,13 @@ class AsertoMiddleware:
         async def __displaystatemap() -> Response:
             nonlocal resource_context_provider
             if resource_context_provider is None:
-                resource_context_provider = await DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
+                resource_context_provider = (
+                    DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
+                )
 
             client, resource_context = await gather(
                 self._generate_client(),
-                resource_context_provider(), 
+                resource_context_provider(),
             )
 
             display_state_map = await client.decision_tree(
