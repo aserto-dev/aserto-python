@@ -210,9 +210,7 @@ class AsertoMiddleware:
         async def __displaystatemap() -> Response:
             nonlocal resource_context_provider
             if resource_context_provider is None:
-                resource_context_provider = (
-                    DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
-                )
+                resource_context_provider = DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
 
             client, resource_context = await gather(
                 self._generate_client(),

@@ -18,7 +18,6 @@ IdentityMapper = Callable[[], Awaitable[Identity]]
 StringMapper = Callable[[], Awaitable[str]]
 ResourceMapper = Callable[[], Awaitable[ResourceContext]]
 
-
 def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT() -> ResourceMapper:
     async def view_args() -> ResourceContext:
         return request.view_args or {}
