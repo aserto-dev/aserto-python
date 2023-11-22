@@ -12,9 +12,9 @@ import pytest
 @dataclass(frozen=True)
 class Service:
     address: str
-    api_key: Optional[str] = None
-    tenant_id: Optional[str] = None
-    ca_cert_path: Optional[str] = None
+    api_key: str = ""
+    tenant_id: str = ""
+    ca_cert_path: str = ""
 
 
 @dataclass(frozen=True)

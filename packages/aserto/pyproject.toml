@@ -28,7 +28,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-aiohttp = "^3.8.1"
+aiohttp = "^3.8.0"
 python = "^3.8"
 typing-extensions = "^4.8.0"
 grpcio = "^1.49.1"
@@ -39,8 +39,9 @@ aserto-directory = {path = "../../../python-directory", develop = true}
 [tool.poetry.dev-dependencies]
 black = "21.7b0"
 isort= "^5.9.3"
-mypy = "^0.910"
+mypy = "^1.6.1"
 pytest-asyncio = "^0.15.1"
+pyright = "^1.1.336"
 
 [tool.black]
 line-length = 100

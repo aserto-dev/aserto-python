@@ -6,7 +6,7 @@ import grpc.aio as grpc
 import pytest
 from google.protobuf.json_format import MessageToJson
 
-from aserto.client.directory.aio import (
+from aserto.client.directory.v2.aio import (
     DeletePermissionRequest,
     DeleteRelationTypeRequest,
     Directory,
@@ -47,7 +47,7 @@ def event_loop():
 
 @pytest.fixture(scope="module")
 async def async_directory_client(topaz):
-    client = Directory(address=topaz.directory.address, ca_cert=topaz.directory.ca_cert_path)
+    client = Directory(address=topaz.directory.address, ca_cert_path=topaz.directory.ca_cert_path)
 
     yield client
 

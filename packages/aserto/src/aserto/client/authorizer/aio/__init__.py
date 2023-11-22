@@ -4,37 +4,37 @@ from typing import AsyncGenerator, Collection, Dict, Mapping, Optional, Union
 from urllib.parse import urlparse
 
 import google.protobuf.struct_pb2 as structpb
-from aserto.authorizer.v2.api import (
-    IdentityContext,
-    PolicyContext,
-    IdentityType,
-    PolicyInstance,
-)
+import grpc as grpc_base
+import grpc.aio as grpc
 from aserto.authorizer.v2 import (
     AuthorizerStub,
+    CompileRequest,
+    CompileResponse,
     DecisionTreeOptions,
     DecisionTreeRequest,
     DecisionTreeResponse,
-    PathSeparator,
+    GetPolicyRequest,
+    GetPolicyResponse,
     IsRequest,
-    QueryResponse,
-    QueryRequest,
-    QueryOptions,
-    CompileRequest,
-    CompileResponse,
     ListPoliciesRequest,
     ListPoliciesResponse,
-    GetPolicyRequest,
-    GetPolicyResponse, 
+    PathSeparator,
+    QueryOptions,
+    QueryRequest,
+    QueryResponse,
 )
-
-import grpc.aio as grpc
+from aserto.authorizer.v2.api import (
+    IdentityContext,
+    IdentityType,
+    PolicyContext,
+    PolicyInstance,
+)
 from typing_extensions import Literal
-from ..._typing import assert_unreachable
-from ..._deadline import monotonic_time_from_deadline
 
-from ...options import AuthorizerOptions
+from ..._deadline import monotonic_time_from_deadline
+from ..._typing import assert_unreachable
 from ...identity import Identity
+from ...options import AuthorizerOptions
 from ...resource_context import ResourceContext
 
 DecisionTree = Dict[str, Dict[str, bool]]
@@ -51,20 +51,20 @@ class AuthorizerClient:
         self._tenant_id = tenant_id
         self._options = options
         self._identity_context_field = IdentityContext(
-            identity=identity.identity_field or "",
-            type=IdentityType.Value(identity.type_field),
+            identity=identity.value or "",
+            type=identity.type,
         )
         result = urlparse(self._options.url)
         self._channel = grpc.secure_channel(
             target=f"{result.hostname}:{result.port}",
-            credentials=grpc.ssl_channel_credentials(self._options.cert),
+            credentials=grpc_base.ssl_channel_credentials(self._options.cert),
         )
         self.client = AuthorizerStub(self._channel)
-    
+
     @property
     def _headers(self) -> Mapping[str, str]:
         return self._options.auth_headers
-    
+
     @property
     def _metadata(self) -> grpc.Metadata:
         return grpc.Metadata(*tuple(self._headers.items()))
@@ -72,7 +72,7 @@ class AuthorizerClient:
     @staticmethod
     def _policy_path_separator_field(
         policy_path_separator: Literal["DOT", "SLASH"]
-    ) -> PathSeparator.ValueType:
+    ) -> PathSeparator:
         if policy_path_separator == "DOT":
             return PathSeparator.PATH_SEPARATOR_DOT
         elif policy_path_separator == "SLASH":
@@ -181,7 +181,6 @@ class AuthorizerClient:
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
-
         response = await self.client.Is(
             IsRequest(
                 policy_context=PolicyContext(
@@ -203,21 +202,20 @@ class AuthorizerClient:
             results[decision_object.decision] = getattr(decision_object, "is")
 
         return results
-    
-    async def query(
-            self,
-            *,
-            query: str,
-            input: str,
-            policy_path: str,
-            decisions: Collection[str],
-            policy_instance_name: Optional[str],
-            policy_instance_label: Optional[str] = None,
-            resource_context: Optional[ResourceContext] = None,
-            options: Optional[QueryOptions] = None,
-            deadline: Optional[Union[datetime, timedelta]] = None,
-    ) -> QueryResponse:
 
+    async def query(
+        self,
+        *,
+        query: str,
+        input: str,
+        policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
+        resource_context: Optional[ResourceContext] = None,
+        options: Optional[QueryOptions] = None,
+        deadline: Optional[Union[datetime, timedelta]] = None,
+    ) -> QueryResponse:
         response = await self.client.Query(
             QueryRequest(
                 query=query,
@@ -239,22 +237,22 @@ class AuthorizerClient:
         )
 
         return response
-    
+
     async def compile(
-            self,
-            *,
-            query: str,
-            input: str,
-            unknowns:  Collection[str],
-            disable_inlining: Collection[str],
-            policy_path: str,
-            decisions: Collection[str],
-            policy_instance_name: Optional[str],
-            policy_instance_label: Optional[str] = None,
-            resource_context: Optional[ResourceContext] = None,
-            options: Optional[QueryOptions] = None,
-            deadline: Optional[Union[datetime, timedelta]] = None,
-        ) -> CompileResponse:
+        self,
+        *,
+        query: str,
+        input: str,
+        unknowns: Collection[str],
+        disable_inlining: Collection[str],
+        policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
+        resource_context: Optional[ResourceContext] = None,
+        options: Optional[QueryOptions] = None,
+        deadline: Optional[Union[datetime, timedelta]] = None,
+    ) -> CompileResponse:
         response = await self.client.Compile(
             CompileRequest(
                 query=query,
@@ -278,14 +276,14 @@ class AuthorizerClient:
         )
 
         return response
-    
+
     async def list_policies(
-            self,
-            *,
-            policy_instance_name: Optional[str],
-            policy_instance_label: Optional[str] = None,
-            deadline: Optional[Union[datetime, timedelta]] = None,
-        ) -> ListPoliciesResponse:
+        self,
+        *,
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
+        deadline: Optional[Union[datetime, timedelta]] = None,
+    ) -> ListPoliciesResponse:
         response = await self.client.ListPolicies(
             ListPoliciesRequest(
                 policy_instance=PolicyInstance(
@@ -298,15 +296,15 @@ class AuthorizerClient:
         )
 
         return response
-    
+
     async def get_policy(
-            self,
-            *,
-            id: str,
-            policy_instance_name: Optional[str],
-            policy_instance_label: Optional[str] = None,
-            deadline: Optional[Union[datetime, timedelta]] = None,
-        ) -> GetPolicyRequest:
+        self,
+        *,
+        id: str,
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
+        deadline: Optional[Union[datetime, timedelta]] = None,
+    ) -> GetPolicyRequest:
         response = await self.client.GetPolicy(
             GetPolicyRequest(
                 id=id,

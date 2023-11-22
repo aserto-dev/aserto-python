@@ -4,38 +4,37 @@ from typing import Collection, Dict, Mapping, Optional, Union
 from urllib.parse import urlparse
 
 import google.protobuf.struct_pb2 as structpb
-from aserto.authorizer.v2.api import (
-    IdentityContext,
-    PolicyContext,
-    IdentityType,
-    PolicyInstance,
-)
+import grpc
+import grpc.aio as grpcaio
 from aserto.authorizer.v2 import (
     AuthorizerStub,
+    CompileRequest,
+    CompileResponse,
     DecisionTreeOptions,
     DecisionTreeRequest,
     DecisionTreeResponse,
-    PathSeparator,
+    GetPolicyRequest,
+    GetPolicyResponse,
     IsRequest,
-    QueryResponse,
-    QueryRequest,
-    QueryOptions,
-    CompileRequest,
-    CompileResponse,
     ListPoliciesRequest,
     ListPoliciesResponse,
-    GetPolicyRequest,
-    GetPolicyResponse, 
+    PathSeparator,
+    QueryOptions,
+    QueryRequest,
+    QueryResponse,
 )
-
-import grpc
-import grpc.aio as grpcaio
+from aserto.authorizer.v2.api import (
+    IdentityContext,
+    IdentityType,
+    PolicyContext,
+    PolicyInstance,
+)
 from typing_extensions import Literal
-from .._typing import assert_unreachable
-from .._deadline import monotonic_time_from_deadline
 
-from ..options import AuthorizerOptions
+from .._deadline import monotonic_time_from_deadline
+from .._typing import assert_unreachable
 from ..identity import Identity
+from ..options import AuthorizerOptions
 from ..resource_context import ResourceContext
 
 DecisionTree = Dict[str, Dict[str, bool]]
@@ -52,8 +51,8 @@ class AuthorizerClient:
         self._tenant_id = tenant_id
         self._options = options
         self._identity_context_field = IdentityContext(
-            identity=identity.identity_field or "",
-            type=IdentityType.Value(identity.type_field),
+            identity=identity.value or "",
+            type=identity.type,
         )
         result = urlparse(self._options.url)
         self._channel = grpc.secure_channel(
@@ -61,11 +60,11 @@ class AuthorizerClient:
             credentials=grpc.ssl_channel_credentials(self._options.cert),
         )
         self.client = AuthorizerStub(self._channel)
-    
+
     @property
     def _headers(self) -> Mapping[str, str]:
         return self._options.auth_headers
-    
+
     @property
     def _metadata(self) -> grpcaio.Metadata:
         return grpcaio.Metadata(*tuple(self._headers.items()))
@@ -73,7 +72,7 @@ class AuthorizerClient:
     @staticmethod
     def _policy_path_separator_field(
         policy_path_separator: Literal["DOT", "SLASH"]
-    ) -> PathSeparator.ValueType:
+    ) -> PathSeparator:
         if policy_path_separator == "DOT":
             return PathSeparator.PATH_SEPARATOR_DOT
         elif policy_path_separator == "SLASH":
@@ -87,9 +86,9 @@ class AuthorizerClient:
             json.dumps(resource_context)
         except ValueError as error:
             if error.args == ("Circular reference detected",):  # type: ignore[misc]
-                raise TypeError("Resource context is circularly defined")
+                raise TypeError("Resource context is circularly defined") from error
             else:
-                raise TypeError("Invalid resource context")
+                raise TypeError("Invalid resource context") from error
 
         proto_value = cls._serialize_resource_context_value(resource_context)
         return proto_value.struct_value
@@ -134,7 +133,7 @@ class AuthorizerClient:
         if policy_path_separator is not None:
             options.path_separator = self._policy_path_separator_field(policy_path_separator)
 
-        response =  self.client.DecisionTree(
+        response = self.client.DecisionTree(
             DecisionTreeRequest(
                 policy_context=PolicyContext(
                     path=policy_path_root,
@@ -182,7 +181,6 @@ class AuthorizerClient:
         resource_context: Optional[ResourceContext] = None,
         deadline: Optional[Union[datetime, timedelta]] = None,
     ) -> Dict[str, bool]:
-
         response = self.client.Is(
             IsRequest(
                 policy_context=PolicyContext(
@@ -204,21 +202,20 @@ class AuthorizerClient:
             results[decision_object.decision] = getattr(decision_object, "is")
 
         return results
-    
-    def query(
-            self,
-            *,
-            query: str,
-            input: str,
-            policy_path: str,
-            decisions: Collection[str],
-            policy_instance_name: Optional[str],
-            policy_instance_label: Optional[str] = None,
-            resource_context: Optional[ResourceContext] = None,
-            options: Optional[QueryOptions] = None,
-            deadline: Optional[Union[datetime, timedelta]] = None,
-    ) -> QueryResponse:
 
+    def query(
+        self,
+        *,
+        query: str,
+        input: str,
+        policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
+        resource_context: Optional[ResourceContext] = None,
+        options: Optional[QueryOptions] = None,
+        deadline: Optional[Union[datetime, timedelta]] = None,
+    ) -> QueryResponse:
         response = self.client.Query(
             QueryRequest(
                 query=query,
@@ -240,22 +237,22 @@ class AuthorizerClient:
         )
 
         return response
-    
+
     def compile(
-            self,
-            *,
-            query: str,
-            input: str,
-            unknowns:  Collection[str],
-            disable_inlining: Collection[str],
-            policy_path: str,
-            decisions: Collection[str],
-            policy_instance_name: Optional[str],
-            policy_instance_label: Optional[str] = None,
-            resource_context: Optional[ResourceContext] = None,
-            options: Optional[QueryOptions] = None,
-            deadline: Optional[Union[datetime, timedelta]] = None,
-        ) -> CompileResponse:
+        self,
+        *,
+        query: str,
+        input: str,
+        unknowns: Collection[str],
+        disable_inlining: Collection[str],
+        policy_path: str,
+        decisions: Collection[str],
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
+        resource_context: Optional[ResourceContext] = None,
+        options: Optional[QueryOptions] = None,
+        deadline: Optional[Union[datetime, timedelta]] = None,
+    ) -> CompileResponse:
         response = self.client.Compile(
             CompileRequest(
                 query=query,
@@ -279,15 +276,15 @@ class AuthorizerClient:
         )
 
         return response
-    
+
     def list_policies(
-            self,
-            *,
-            policy_instance_name: Optional[str],
-            policy_instance_label: Optional[str] = None,
-            deadline: Optional[Union[datetime, timedelta]] = None,
-        ) -> ListPoliciesResponse:
-        response=self.client.ListPolicies(
+        self,
+        *,
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
+        deadline: Optional[Union[datetime, timedelta]] = None,
+    ) -> ListPoliciesResponse:
+        response = self.client.ListPolicies(
             ListPoliciesRequest(
                 policy_instance=PolicyInstance(
                     name=policy_instance_name,
@@ -299,16 +296,16 @@ class AuthorizerClient:
         )
 
         return response
-    
+
     def get_policy(
-            self,
-            *,
-            id: str,
-            policy_instance_name: Optional[str],
-            policy_instance_label: Optional[str] = None,
-            deadline: Optional[Union[datetime, timedelta]] = None,
-        ) -> GetPolicyResponse:
-        response=self.client.GetPolicy(
+        self,
+        *,
+        id: str,
+        policy_instance_name: Optional[str],
+        policy_instance_label: Optional[str] = None,
+        deadline: Optional[Union[datetime, timedelta]] = None,
+    ) -> GetPolicyResponse:
+        response = self.client.GetPolicy(
             GetPolicyRequest(
                 id=id,
                 policy_instance=PolicyInstance(

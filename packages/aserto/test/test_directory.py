@@ -3,22 +3,23 @@ from dataclasses import dataclass
 
 import grpc
 import pytest
-
-from aserto.client.directory import (
+from aserto.directory.common.v2 import Permission, RelationType
+from aserto.directory.writer.v2 import (
     DeletePermissionRequest,
     DeleteRelationTypeRequest,
+    SetPermissionRequest,
+    SetRelationTypeRequest,
+)
+
+from aserto.client.directory.v2 import (
     Directory,
     NotFoundError,
     Object,
     ObjectIdentifier,
     PaginationRequest,
-    Permission,
     PermissionIdentifier,
     Relation,
-    RelationType,
     RelationTypeIdentifier,
-    SetPermissionRequest,
-    SetRelationTypeRequest,
 )
 
 
@@ -36,7 +37,7 @@ class SetupData:
 
 @pytest.fixture(scope="module")
 def directory_client(topaz):
-    client = Directory(address=topaz.directory.address, ca_cert=topaz.directory.ca_cert_path)
+    client = Directory(address=topaz.directory.address, ca_cert_path=topaz.directory.ca_cert_path)
 
     yield client
 
@@ -82,19 +83,19 @@ def directory(directory_client: Directory):
     ).result
 
     relation_1: Relation = directory_client.set_relation(
-        relation={
-            "subject": {"key": obj_1.key, "type": obj_1.type},
-            "object": {"key": obj_2.key, "type": obj_2.type},
-            "relation": relation_type_1.name,
-        }
+        object_type=obj_2.type,
+        object_key=obj_2.key,
+        relation=relation_type_1.name,
+        subject_type=obj_1.type,
+        subject_key=obj_1.key,
     )
 
     relation_2: Relation = directory_client.set_relation(
-        relation={
-            "subject": {"key": obj_1.key, "type": obj_1.type},
-            "object": {"key": obj_3.key, "type": obj_3.type},
-            "relation": relation_type_2.name,
-        }
+        object_type=obj_3.type,
+        object_key=obj_3.key,
+        relation=relation_type_2.name,
+        subject_type=obj_1.type,
+        subject_key=obj_1.key,
     )
 
     yield SetupData(
@@ -109,13 +110,13 @@ def directory(directory_client: Directory):
     )
 
     relations_response = directory_client.get_relations(page=PaginationRequest(size=30))
-    relations = relations_response.results
+    relations = relations_response.relations
 
     while relations_response.page.next_token:
         relations_response = directory_client.get_relations(
             page=PaginationRequest(size=30, token=relations_response.page.next_token)
         )
-        relations += relations_response.results
+        relations += relations_response.relations
 
     for rel in relations:
         directory_client.delete_relation(
@@ -141,26 +142,30 @@ def directory(directory_client: Directory):
         )
 
     objects_response = directory_client.get_objects(page=PaginationRequest(size=30))
-    objects = objects_response.results
+    objects = list(objects_response.results)
 
     while objects_response.page.next_token:
         objects_response = directory_client.get_objects(
             page=PaginationRequest(size=30, token=objects_response.page.next_token)
         )
-        objects += objects_response.results
+        objects.extend(objects_response.results)
 
     for obj in objects:
-        directory_client.delete_object(key=obj.key, type=obj.type)
+        directory_client.delete_object(object_type=obj.type, object_key=obj.key)
 
 
 def test_delete_object(directory: SetupData):
-    directory.client.delete_object(key=directory.obj_1.key, type=directory.obj_1.type)
+    directory.client.delete_object(object_type=directory.obj_1.type, object_key=directory.obj_1.key)
     with pytest.raises(NotFoundError):
-        directory.client.get_object(key=directory.obj_1.key, type=directory.obj_1.type)
+        directory.client.get_object(
+            object_type=directory.obj_1.type, object_key=directory.obj_1.key
+        )
 
 
 def test_get_object(directory: SetupData):
-    obj = directory.client.get_object(key=directory.obj_1.key, type=directory.obj_1.type)
+    obj = directory.client.get_object(
+        object_type=directory.obj_1.type, object_key=directory.obj_1.key
+    )
 
     assert obj.key == directory.obj_1.key
     assert obj.type == directory.obj_1.type
@@ -170,12 +175,12 @@ def test_get_object(directory: SetupData):
 def test_object_not_found(directory: SetupData):
     key = uuid.uuid4().hex
     with pytest.raises(NotFoundError):
-        directory.client.get_object(key=key, type="user")
+        directory.client.get_object("user", key)
 
 
 def test_object_invalid_arg(directory: SetupData):
     with pytest.raises(grpc.RpcError, match="object identifier invalid argument") as err:
-        directory.client.get_object(key=directory.obj_1.key, type="")
+        directory.client.get_object("", directory.obj_1.key)
 
 
 @pytest.mark.skip(reason="topaz directory doesn't filter on type")
@@ -214,7 +219,7 @@ def test_get_objects_paging(directory: SetupData):
 
 def test_get_objects_many(directory: SetupData):
     objs = directory.client.get_objects_many(
-        objects=[
+        [
             ObjectIdentifier(key=directory.obj_1.key, type=directory.obj_1.type),
             ObjectIdentifier(key=directory.obj_2.key, type=directory.obj_2.type),
         ]
@@ -226,7 +231,7 @@ def test_get_objects_many(directory: SetupData):
 
 
 def test_set_object(directory: SetupData):
-    obj = directory.client.get_object(key=directory.obj_1.key, type=directory.obj_1.type)
+    obj = directory.client.get_object(directory.obj_1.type, directory.obj_1.key)
     updated_obj = directory.client.set_object(
         Object(key=obj.type, type=obj.type, hash=obj.hash, display_name="changed user")
     )
@@ -245,80 +250,52 @@ def test_delete_relation(directory: SetupData):
 
     with pytest.raises(NotFoundError):
         directory.client.get_relation(
-            subject_type=directory.relation_1.subject.type,
-            subject_key=directory.relation_1.subject.key,
             object_type=directory.relation_1.object.type,
             object_key=directory.relation_1.object.key,
-            relation_type=directory.relation_1.relation,
+            relation=directory.relation_1.relation,
+            subject_type=directory.relation_1.subject.type,
+            subject_key=directory.relation_1.subject.key,
         )
 
 
 def test_get_relation(directory: SetupData):
     rel = directory.client.get_relation(
-        subject_type=directory.relation_1.subject.type,
-        subject_key=directory.relation_1.subject.key,
         object_type=directory.relation_1.object.type,
         object_key=directory.relation_1.object.key,
-        relation_type=directory.relation_1.relation,
+        relation=directory.relation_1.relation,
+        subject_type=directory.relation_1.subject.type,
+        subject_key=directory.relation_1.subject.key,
     )
 
-    assert rel.relation.relation == directory.relation_1.relation
-    assert rel.relation.object.key == directory.relation_1.object.key
-    assert rel.relation.subject.key == directory.relation_1.subject.key
-    assert rel.objects == {}
+    assert rel.relation == directory.relation_1.relation
+    assert rel.object.key == directory.relation_1.object.key
+    assert rel.subject.key == directory.relation_1.subject.key
 
 
 def test_get_relation_with_objects(directory: SetupData):
     rel = directory.client.get_relation(
-        subject_type=directory.relation_1.subject.type,
-        subject_key=directory.relation_1.subject.key,
         object_type=directory.relation_1.object.type,
         object_key=directory.relation_1.object.key,
-        relation_type=directory.relation_1.relation,
+        relation=directory.relation_1.relation,
+        subject_type=directory.relation_1.subject.type,
+        subject_key=directory.relation_1.subject.key,
         with_objects=True,
     )
 
     assert rel.relation.relation == directory.relation_1.relation
     assert rel.relation.object.key == directory.relation_1.object.key
     assert rel.relation.subject.key == directory.relation_1.subject.key
-    assert len(rel.objects) == 2
-    assert (
-        ObjectIdentifier(type=directory.relation_1.object.type, key=directory.relation_1.object.key)
-        in rel.objects
-    )
-    assert (
-        ObjectIdentifier(
-            type=directory.relation_1.subject.type, key=directory.relation_1.subject.key
-        )
-        in rel.objects
-    )
+    assert rel.object.type == directory.relation_1.relation
+    assert rel.object.key == directory.relation_1.object.key
+    assert rel.subject.type == directory.relation_1.subject.type
+    assert rel.subject.key == directory.relation_1.subject.key
 
 
 def test_get_relations(directory: SetupData):
-    rels = directory.client.get_relations(page=PaginationRequest(size=10)).results
+    rels = directory.client.get_relations(page=PaginationRequest(size=10)).relations
 
     assert directory.relation_2 in rels
     assert len(rels) == 2
-
-
-def test_set_relation(directory: SetupData):
-    rel = directory.client.get_relation(
-        subject_type=directory.relation_1.subject.type,
-        subject_key=directory.relation_1.subject.key,
-        object_type=directory.relation_1.object.type,
-        object_key=directory.relation_1.object.key,
-        relation_type=directory.relation_1.relation,
-    )
-
-    updated_rel = directory.client.set_relation(
-        relation={
-            "subject": {"key": rel.relation.subject.key, "type": rel.relation.subject.type},
-            "object": {"key": rel.relation.object.key, "type": rel.relation.object.type},
-            "relation": "changed relation",
-        }
-    )
-
-    assert updated_rel.relation == "changed relation"
 
 
 def test_check_relation(directory: SetupData):

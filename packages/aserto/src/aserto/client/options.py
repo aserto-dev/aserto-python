@@ -27,7 +27,7 @@ class AuthorizerOptions:
         self._tenant_id = tenant_id
         self._api_key = api_key
         self._cert_file_path = cert_file_path
-        self._service_type = service_type
+        self._service_type: ServiceType = service_type
 
         if not url.endswith("aserto.com"):
             self._url = url
@@ -64,7 +64,11 @@ class AuthorizerOptions:
 
     @property
     def ssl_context(self) -> Optional[ssl.SSLContext]:
-        return ssl.create_default_context(cafile=self._cert_file_path) if self._cert_file_path else None
+        return (
+            ssl.create_default_context(cafile=self._cert_file_path)
+            if self._cert_file_path
+            else None
+        )
 
     @property
     def auth_headers(self) -> Mapping[str, str]:
