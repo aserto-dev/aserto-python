@@ -1,8 +1,10 @@
 import re
-from typing import Callable
+from dataclasses import dataclass
+from typing import Callable, TypeVar, Union
 
 from aserto.client import Identity, ResourceContext
 from flask import request
+from flask.wrappers import Response
 
 __all__ = [
     "create_default_policy_path_resolver",
@@ -10,10 +12,25 @@ __all__ = [
     "DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP",
 ]
 
+@dataclass
+class Obj:
+    id: str
+    objType: str
+
+
 IdentityMapper = Callable[[], Identity]
 StringMapper = Callable[[], str]
+ObjectMapper = Callable[[], Obj]
 ResourceMapper = Callable[[], ResourceContext]
 DEFAULT_DISPLAY_STATE_MAP_ENDPOINT = "/__displaystatemap"
+
+@dataclass(frozen=True)
+class AuthorizationError(Exception):
+    policy_instance_name: str
+    policy_path: str
+
+
+Handler = TypeVar("Handler", bound=Callable[..., Union[Response, Response]])
 
 
 def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT() -> ResourceContext:

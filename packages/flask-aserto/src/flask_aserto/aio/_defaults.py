@@ -1,8 +1,10 @@
 import re
+from dataclasses import dataclass
 from typing import Awaitable, Callable
 
 from aserto.client import Identity, ResourceContext
 from flask import request
+from flask.wrappers import Response
 
 __all__ = [
     "create_default_policy_path_resolver",
@@ -12,10 +14,25 @@ __all__ = [
 ]
 
 
+@dataclass
+class Obj:
+    id: str
+    objType: str
+
+@dataclass(frozen=True)
+class AuthorizationError(Exception):
+    policy_instance_name: str
+    policy_path: str
+
+
+Handler = Callable[..., Awaitable[Response]]
+
+
 DEFAULT_DISPLAY_STATE_MAP_ENDPOINT = "/__displaystatemap"
 
 IdentityMapper = Callable[[], Awaitable[Identity]]
 StringMapper = Callable[[], Awaitable[str]]
+ObjectMapper = Callable[[], Awaitable[Obj]]
 ResourceMapper = Callable[[], Awaitable[ResourceContext]]
 
 
