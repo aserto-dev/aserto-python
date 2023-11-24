@@ -1,12 +1,23 @@
 from dataclasses import dataclass
-from typing import List, Mapping, Optional
+from typing import Mapping
 
-from aserto.directory.common.v2 import (
-    Object,
-    ObjectIdentifier,
-    PaginationResponse,
-    Relation,
-)
+from aserto.directory.common.v2 import Object
+from aserto.directory.common.v2 import ObjectIdentifier as ObjectIdentifierProto
+from aserto.directory.common.v2 import Relation
+
+
+@dataclass(frozen=True)
+class ObjectIdentifier:
+    """
+    Unique identifier of a directory object.
+    """
+
+    type: str
+    key: str
+
+    @property
+    def proto(self) -> ObjectIdentifierProto:
+        return ObjectIdentifierProto(type=self.type, key=self.key)
 
 
 @dataclass(frozen=True)
@@ -20,27 +31,10 @@ class RelationResponse:
     subject: Object
 
 
-@dataclass(frozen=True)
-class RelationsResponse:
-    """
-    Response to get_relations calls.
-
-    Attributes
-    ----
-    relation    The returned relation.
-    objects     If with_relations is True, a mapping from "type:key" to the corresponding object.
-    page        The next page's token if there are more results.
-    """
-
-    relations: List[Relation]
-    objects: Optional[Mapping[ObjectIdentifier, Object]]
-    page: PaginationResponse
-
-
 def relation_objects(objects: Mapping[str, Object]) -> Mapping[ObjectIdentifier, Object]:
     res: Mapping[ObjectIdentifier, Object] = {}
     for k, obj in objects.items():
         obj_type, obj_key = k.split(":", 1)
-        res[ObjectIdentifier(obj_type, obj_key)] = obj
+        res[ObjectIdentifier(type=obj_type, key=obj_key)] = obj
 
     return res

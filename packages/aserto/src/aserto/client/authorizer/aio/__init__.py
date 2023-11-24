@@ -318,3 +318,8 @@ class AuthorizerClient:
         )
 
         return response
+
+    async def close(self) -> None:
+        """Closes the gRPC channel"""
+
+        await self._channel.close()

@@ -3,7 +3,6 @@ from typing import List, Literal, Optional, Sequence, Tuple, Union, overload
 import grpc
 from aserto.directory.common.v3 import (
     Object,
-    ObjectIdentifier,
     PaginationRequest,
     PaginationResponse,
     Relation,
@@ -33,6 +32,7 @@ from aserto.directory.writer.v3 import (
 
 from aserto.client.directory import NotFoundError, channel_credentials, get_metadata
 from aserto.client.directory.v3.helpers import (
+    ObjectIdentifier,
     RelationResponse,
     RelationsResponse,
     relation_objects,
@@ -55,56 +55,6 @@ class Directory:
         self.writer = WriterStub(self._channel)
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
-
-    def get_objects(
-        self, object_type: str = "", page: Optional[PaginationRequest] = None
-    ) -> GetObjectsResponse:
-        """Lists directory objects, optionally filtered by type.
-
-        Parameters
-        ----
-        object_type : str
-            the type of object to retrieve. If empty, all objects are returned.
-        page : PaginationRequest
-            paging information — the size of the page, and the pagination token
-
-        Returns
-        ----
-        GetObjectsResponse
-            results : list(Object)
-                list of directory objects
-            page : PaginationResponse
-                the next page's token if there are more results
-        """
-
-        response = self.reader.GetObjects(
-            GetObjectsRequest(object_type, page),
-            metadata=self._metadata,
-        )
-        return response
-
-    def get_objects_many(
-        self,
-        objects: Sequence[ObjectIdentifier],
-    ) -> List[Object]:
-        """Retrieve a set of directory objects.
-        Returns a list of all objects that were found.
-
-        Parameters
-        ----
-        objects : Sequence[ObjectIdentifier]
-            sequence of object type and id pairs.
-
-        Returns
-        ----
-        list
-            list of directory objects
-        """
-
-        response = self.reader.GetObjectMany(
-            GetObjectManyRequest(param=objects), metadata=self._metadata
-        )
-        return response.results
 
     @overload
     def get_object(
@@ -154,7 +104,12 @@ class Directory:
 
         try:
             response = self.reader.GetObject(
-                GetObjectRequest(object_type, object_id, with_relations, page),
+                GetObjectRequest(
+                    object_type=object_type,
+                    object_id=object_id,
+                    with_relations=with_relations,
+                    page=page,
+                ),
                 metadata=self._metadata,
             )
             if with_relations:
@@ -163,9 +118,66 @@ class Directory:
             return response.result
 
         except grpc.RpcError as err:
-            if err.code() == grpc.StatusCode.NOT_FOUND:
+            if err.code() == grpc.StatusCode.NOT_FOUND:  # type: ignore
                 raise NotFoundError from err
             raise
+
+    def get_object_many(
+        self,
+        identifiers: Sequence[ObjectIdentifier],
+    ) -> List[Object]:
+        """Retrieve a list of directory object using a list of object key and type pairs.
+        Returns a list of the requested objects.
+        Raises a NotFoundError if any of the objects don't exist.
+
+        Parameters
+        ----
+        identifiers: Sequence[ObjectIdentifier]
+            sequence of object type and id pairs.
+
+        Returns
+        ----
+        list
+            list of directory objects
+        """
+
+        try:
+            response = self.reader.GetObjectMany(
+                GetObjectManyRequest(param=(i.proto for i in identifiers)),
+                metadata=self._metadata,
+            )
+            return response.results
+        except grpc.RpcError as err:
+            if err.code() == grpc.StatusCode.NOT_FOUND:  # type: ignore
+                raise NotFoundError from err
+            raise
+
+    def get_objects(
+        self, object_type: str = "", page: Optional[PaginationRequest] = None
+    ) -> GetObjectsResponse:
+        """Lists directory objects, optionally filtered by type.
+
+        Parameters
+        ----
+        object_type : str
+            the type of object to retrieve. If empty, all objects are returned.
+        page : PaginationRequest
+            paging information — the size of the page, and the pagination token
+
+        Returns
+        ----
+        GetObjectsResponse
+            results : list(Object)
+                list of directory objects
+            page : PaginationResponse
+                the next page's token if there are more results
+        """
+
+        response = self.reader.GetObjects(
+            GetObjectsRequest(object_type=object_type, page=page),
+            metadata=self._metadata,
+        )
+        return response
 
     def set_object(self, object: Object) -> Object:
         """Create a new directory object or updates an existing object if an object with the same type and id already exists.
@@ -181,7 +193,7 @@ class Directory:
         The created/updated object.
         """
 
-        response = self.writer.SetObject(SetObjectRequest(object), metadata=self._metadata)
+        response = self.writer.SetObject(SetObjectRequest(object=object), metadata=self._metadata)
         return response.result
 
     def delete_object(self, object_type: str, object_id: str, with_relations: bool = False) -> None:
@@ -202,70 +214,10 @@ class Directory:
         """
 
         self.writer.DeleteObject(
-            DeleteObjectRequest(object_type, object_id, with_relations), metadata=self._metadata
-        )
-
-    def get_relations(
-        self,
-        object_type: str = "",
-        object_id: str = "",
-        relation: str = "",
-        subject_type: str = "",
-        subject_id: str = "",
-        subject_relation: str = "",
-        with_objects: bool = False,
-        page: Optional[PaginationRequest] = None,
-    ) -> RelationsResponse:
-        """Searches for relations matching the specified fields.
-
-        Parameters
-        ----
-        object_type : str
-            include relations where the object is of this type.
-        object_id: str
-            include relations where the object has this id. If specified, object_type must also be specified.
-        relation: str
-            include relations of this type.
-        subject_type : str
-            include relations where the subject is of this type.
-        subject_id: str
-            include relations where the subject has this id. If specified, subject_type must also be specified.
-        subject_relation: str
-            include relations the specified subject relation.
-        with_objects: bool
-            If True, the response includes the object and subject for each relation. Default: False.
-        page : PaginationRequest
-            paging information — the size of the page, and the pagination start token
-
-        Returns
-        ----
-        GetRelationsResponse
-            results: list(Relation)
-                list of directory relations
-            objects: Mapping[str, Object]
-                map from "type:id" to the corresponding object, if with_objects is True.
-            page : PaginationResponse(result_size: int, next_token: str)
-                retrieved page information — the size of the page, and the next page's token
-        """
-
-        response = self.reader.GetRelations(
-            GetRelationsRequest(
-                object_type,
-                object_id,
-                relation,
-                subject_type,
-                subject_id,
-                subject_relation,
-                with_objects,
-                page=page,
+            DeleteObjectRequest(
+                object_type=object_type, object_id=object_id, with_relations=with_relations
             ),
             metadata=self._metadata,
-        )
-
-        return RelationsResponse(
-            relations=response.results,
-            objects=relation_objects(response.objects),
-            page=response.page,
         )
 
     @overload
@@ -335,13 +287,13 @@ class Directory:
         try:
             response = self.reader.GetRelation(
                 GetRelationRequest(
-                    object_type,
-                    object_id,
-                    relation,
-                    subject_type,
-                    subject_id,
-                    subject_relation,
-                    with_objects,
+                    object_type=object_type,
+                    object_id=object_id,
+                    relation=relation,
+                    subject_type=subject_type,
+                    subject_id=subject_id,
+                    subject_relation=subject_relation,
+                    with_objects=with_objects,
                 ),
                 metadata=self._metadata,
             )
@@ -353,14 +305,77 @@ class Directory:
             objects = relation_objects(response.objects)
             return RelationResponse(
                 relation=rel,
-                object=objects[ObjectIdentifier(rel.object_type, rel.object.key)],
-                subject=objects[ObjectIdentifier(rel.subject.type, rel.subject.key)],
+                object=objects[ObjectIdentifier(rel.object_type, rel.object_id)],
+                subject=objects[ObjectIdentifier(rel.subject_type, rel.subject_id)],
             )
 
         except grpc.RpcError as err:
-            if err.code() == grpc.StatusCode.NOT_FOUND:
+            if err.code() == grpc.StatusCode.NOT_FOUND:  # type: ignore
                 raise NotFoundError from err
             raise
+
+    def get_relations(
+        self,
+        object_type: str = "",
+        object_id: str = "",
+        relation: str = "",
+        subject_type: str = "",
+        subject_id: str = "",
+        subject_relation: str = "",
+        with_objects: bool = False,
+        page: Optional[PaginationRequest] = None,
+    ) -> RelationsResponse:
+        """Searches for relations matching the specified fields.
+
+        Parameters
+        ----
+        object_type : str
+            include relations where the object is of this type.
+        object_id: str
+            include relations where the object has this id. If specified, object_type must also be specified.
+        relation: str
+            include relations of this type.
+        subject_type : str
+            include relations where the subject is of this type.
+        subject_id: str
+            include relations where the subject has this id. If specified, subject_type must also be specified.
+        subject_relation: str
+            include relations the specified subject relation.
+        with_objects: bool
+            If True, the response includes the object and subject for each relation. Default: False.
+        page : PaginationRequest
+            paging information — the size of the page, and the pagination start token
+
+        Returns
+        ----
+        GetRelationsResponse
+            results: list(Relation)
+                list of directory relations
+            objects: Mapping[str, Object]
+                map from "type:id" to the corresponding object, if with_objects is True.
+            page : PaginationResponse(result_size: int, next_token: str)
+                retrieved page information — the size of the page, and the next page's token
+        """
+
+        response = self.reader.GetRelations(
+            GetRelationsRequest(
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+                subject_relation=subject_relation,
+                with_objects=with_objects,
+                page=page,
+            ),
+            metadata=self._metadata,
+        )
+
+        return RelationsResponse(
+            relations=response.results,
+            objects=relation_objects(response.objects),
+            page=response.page,
+        )
 
     def set_relation(
         self,
@@ -396,12 +411,12 @@ class Directory:
         response = self.writer.SetRelation(
             SetRelationRequest(
                 relation=Relation(
-                    object_type,
-                    object_id,
-                    relation,
-                    subject_type,
-                    subject_id,
-                    subject_relation,
+                    object_type=object_type,
+                    object_id=object_id,
+                    relation=relation,
+                    subject_type=subject_type,
+                    subject_id=subject_id,
+                    subject_relation=subject_relation,
                 )
             ),
             metadata=self._metadata,
@@ -441,7 +456,12 @@ class Directory:
 
         self.writer.DeleteRelation(
             DeleteRelationRequest(
-                object_type, object_id, relation, subject_type, subject_id, subject_relation
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+                subject_relation=subject_relation,
             ),
             metadata=self._metadata,
         )
@@ -475,7 +495,13 @@ class Directory:
         True or False
         """
         response = self.reader.Check(
-            CheckRequest(object_type, object_id, relation, subject_type, subject_id),
+            CheckRequest(
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+            ),
             metadata=self._metadata,
         )
         return response.check
@@ -509,7 +535,13 @@ class Directory:
         """
 
         response = self.reader.CheckRelation(
-            CheckRelationRequest(object_type, object_id, relation, subject_type, subject_id),
+            CheckRelationRequest(
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+            ),
             metadata=self._metadata,
         )
         return response.check
@@ -543,7 +575,13 @@ class Directory:
         """
 
         response = self.reader.CheckPermission(
-            CheckPermissionRequest(object_type, object_id, permission, subject_type, subject_id),
+            CheckPermissionRequest(
+                object_type=object_type,
+                object_id=object_id,
+                permission=permission,
+                subject_type=subject_type,
+                subject_id=subject_id,
+            ),
             metadata=self._metadata,
         )
         return response.check

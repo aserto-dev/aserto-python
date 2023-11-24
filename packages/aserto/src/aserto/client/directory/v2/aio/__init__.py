@@ -1,9 +1,9 @@
 from typing import List, Literal, Optional, Sequence, Union, overload
 
 import grpc.aio as grpc
+from aserto.directory.common.v2 import Object
+from aserto.directory.common.v2 import ObjectIdentifier as ObjectIdentifierProto
 from aserto.directory.common.v2 import (
-    Object,
-    ObjectIdentifier,
     ObjectTypeIdentifier,
     PaginationRequest,
     PaginationResponse,
@@ -24,6 +24,7 @@ from aserto.directory.reader.v2 import (
     GetObjectsResponse,
     GetRelationRequest,
     GetRelationsRequest,
+    GetRelationsResponse,
     ReaderStub,
 )
 from aserto.directory.writer.v2 import (
@@ -37,8 +38,8 @@ from grpc import RpcError, StatusCode
 
 from aserto.client.directory import NotFoundError, channel_credentials, get_metadata
 from aserto.client.directory.v2.helpers import (
+    ObjectIdentifier,
     RelationResponse,
-    RelationsResponse,
     relation_objects,
 )
 
@@ -110,7 +111,7 @@ class Directory:
         try:
             response = await self.reader.GetObject(
                 GetObjectRequest(
-                    param=ObjectIdentifier(type=object_type, key=object_key),
+                    param=ObjectIdentifierProto(type=object_type, key=object_key),
                     with_relations=with_relations,
                     page=page,
                 ),
@@ -122,7 +123,7 @@ class Directory:
             return response.result
 
         except RpcError as err:
-            if err.code() == StatusCode.NOT_FOUND:
+            if err.code() == StatusCode.NOT_FOUND:  # type: ignore
                 raise NotFoundError from err
             raise
 
@@ -152,7 +153,7 @@ class Directory:
         )
         return response
 
-    async def get_objects_many(
+    async def get_object_many(
         self,
         identifiers: Sequence[ObjectIdentifier],
     ) -> List[Object]:
@@ -170,9 +171,14 @@ class Directory:
             list of directory objects
         """
 
-        response = await self.reader.GetObjectMany(
-            GetObjectManyRequest(param=identifiers), metadata=self._metadata
-        )
+        try:
+            response = await self.reader.GetObjectMany(
+                GetObjectManyRequest(param=(i.proto for i in identifiers)), metadata=self._metadata
+            )
+        except RpcError as err:
+            if err.code() == StatusCode.NOT_FOUND:  # type: ignore
+                raise NotFoundError from err
+            raise
         return response.results
 
     async def set_object(self, object: Object) -> Object:
@@ -189,7 +195,9 @@ class Directory:
         The created/updated object.
         """
 
-        response = await self.writer.SetObject(SetObjectRequest(object), metadata=self._metadata)
+        response = await self.writer.SetObject(
+            SetObjectRequest(object=object), metadata=self._metadata
+        )
         return response.result
 
     async def delete_object(
@@ -213,7 +221,7 @@ class Directory:
 
         await self.writer.DeleteObject(
             DeleteObjectRequest(
-                param=ObjectIdentifier(type=object_type, key=object_key),
+                param=ObjectIdentifierProto(type=object_type, key=object_key),
                 with_relations=with_relations,
             ),
             metadata=self._metadata,
@@ -227,7 +235,7 @@ class Directory:
         subject_type: str = "",
         subject_key: str = "",
         page: Optional[PaginationRequest] = None,
-    ) -> RelationsResponse:
+    ) -> GetRelationsResponse:
         """Searches for relations matching the specified fields.
 
         Parameters
@@ -258,22 +266,16 @@ class Directory:
                 retrieved page information — the size of the page, and the next page's token
         """
 
-        response = await self.reader.GetRelations(
+        return await self.reader.GetRelations(
             GetRelationsRequest(
                 param=RelationIdentifier(
-                    object=ObjectIdentifier(type=object_type, key=object_key),
-                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    object=ObjectIdentifierProto(type=object_type, key=object_key),
+                    subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
                     relation=RelationTypeIdentifier(name=relation, object_type=object_type),
                 ),
                 page=page,
             ),
             metadata=self._metadata,
-        )
-
-        return RelationsResponse(
-            relations=response.results,
-            objects=relation_objects(response.objects),
-            page=response.page,
         )
 
     @overload
@@ -341,8 +343,8 @@ class Directory:
             response = await self.reader.GetRelation(
                 GetRelationRequest(
                     param=RelationIdentifier(
-                        object=ObjectIdentifier(type=object_type, key=object_key),
-                        subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                        object=ObjectIdentifierProto(type=object_type, key=object_key),
+                        subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
                         relation=RelationTypeIdentifier(name=relation, object_type=object_type),
                     ),
                     with_objects=with_objects,
@@ -350,7 +352,7 @@ class Directory:
                 metadata=self._metadata,
             )
             if not with_objects:
-                return response.result
+                return response.results[0]
 
             rel = response.results[0]
             objects = relation_objects(response.objects)
@@ -361,7 +363,7 @@ class Directory:
             )
 
         except RpcError as err:
-            if err.code() == StatusCode.NOT_FOUND:
+            if err.code() == StatusCode.NOT_FOUND:  # type: ignore
                 raise NotFoundError from err
             raise
 
@@ -391,9 +393,9 @@ class Directory:
         response = await self.writer.SetRelation(
             SetRelationRequest(
                 relation=Relation(
-                    object=ObjectIdentifier(type=object_type, key=object_key),
+                    object=ObjectIdentifierProto(type=object_type, key=object_key),
                     relation=relation,
-                    subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                    subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
                 )
             ),
             metadata=self._metadata,
@@ -402,11 +404,11 @@ class Directory:
 
     async def delete_relation(
         self,
-        subject_type: str,
-        subject_key: str,
         object_type: str,
         object_key: str,
-        relation_type: str,
+        relation: str,
+        subject_type: str,
+        subject_key: str,
     ) -> None:
         """Deletes a relation.
 
@@ -429,9 +431,9 @@ class Directory:
         """
 
         relation_identifier = RelationIdentifier(
-            object=ObjectIdentifier(type=object_type, key=object_key),
-            subject=ObjectIdentifier(type=subject_type, key=subject_key),
-            relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+            object=ObjectIdentifierProto(type=object_type, key=object_key),
+            subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
+            relation=RelationTypeIdentifier(name=relation, object_type=object_type),
         )
         await self.writer.DeleteRelation(
             DeleteRelationRequest(param=relation_identifier), metadata=self._metadata
@@ -439,11 +441,11 @@ class Directory:
 
     async def check_relation(
         self,
-        subject_type: str,
-        subject_key: str,
         object_type: str,
         object_key: str,
-        relation_type: str,
+        relation: str,
+        subject_type: str,
+        subject_key: str,
     ) -> bool:
         """Returns True if the specified relation exists between the given object and subject.
 
@@ -467,9 +469,9 @@ class Directory:
 
         response = await self.reader.CheckRelation(
             CheckRelationRequest(
-                object=ObjectIdentifier(type=object_type, key=object_key),
-                subject=ObjectIdentifier(type=subject_type, key=subject_key),
-                relation=RelationTypeIdentifier(name=relation_type, object_type=object_type),
+                object=ObjectIdentifierProto(type=object_type, key=object_key),
+                relation=RelationTypeIdentifier(name=relation, object_type=object_type),
+                subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
             ),
             metadata=self._metadata,
         )
@@ -505,8 +507,8 @@ class Directory:
 
         response = await self.reader.CheckPermission(
             CheckPermissionRequest(
-                object=ObjectIdentifier(type=object_type, key=object_key),
-                subject=ObjectIdentifier(type=subject_type, key=subject_key),
+                object=ObjectIdentifierProto(type=object_type, key=object_key),
+                subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
                 permission=PermissionIdentifier(name=permission),
             ),
             metadata=self._metadata,

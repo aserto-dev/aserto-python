@@ -3,7 +3,6 @@ from typing import List, Literal, Optional, Sequence, Tuple, Union, overload
 import grpc.aio as grpc
 from aserto.directory.common.v3 import (
     Object,
-    ObjectIdentifier,
     PaginationRequest,
     PaginationResponse,
     Relation,
@@ -34,6 +33,7 @@ from grpc import RpcError, StatusCode
 
 from aserto.client.directory import NotFoundError, channel_credentials, get_metadata
 from aserto.client.directory.v3.helpers import (
+    ObjectIdentifier,
     RelationResponse,
     RelationsResponse,
     relation_objects,
@@ -79,21 +79,21 @@ class Directory:
         """
 
         response = await self.reader.GetObjects(
-            GetObjectsRequest(object_type, page),
+            GetObjectsRequest(object_type=object_type, page=page),
             metadata=self._metadata,
         )
         return response
 
-    async def get_objects_many(
+    async def get_object_many(
         self,
-        objects: Sequence[ObjectIdentifier],
+        identifiers: Sequence[ObjectIdentifier],
     ) -> List[Object]:
         """Retrieve a set of directory objects.
         Returns a list of all objects that were found.
 
         Parameters
         ----
-        objects : Sequence[ObjectIdentifier]
+        identifiers: Sequence[ObjectIdentifier]
             sequence of object type and id pairs.
 
         Returns
@@ -102,10 +102,16 @@ class Directory:
             list of directory objects
         """
 
-        response = await self.reader.GetObjectMany(
-            GetObjectManyRequest(param=objects), metadata=self._metadata
-        )
-        return response.results
+        try:
+            response = await self.reader.GetObjectMany(
+                GetObjectManyRequest(param=(obj.proto for obj in identifiers)),
+                metadata=self._metadata,
+            )
+            return response.results
+        except RpcError as err:
+            if err.code() == StatusCode.NOT_FOUND:  # type: ignore
+                raise NotFoundError from err
+            raise
 
     @overload
     async def get_object(
@@ -155,7 +161,12 @@ class Directory:
 
         try:
             response = await self.reader.GetObject(
-                GetObjectRequest(object_type, object_id, with_relations, page),
+                GetObjectRequest(
+                    object_type=object_type,
+                    object_id=object_id,
+                    with_relations=with_relations,
+                    page=page,
+                ),
                 metadata=self._metadata,
             )
             if with_relations:
@@ -182,7 +193,9 @@ class Directory:
         The created/updated object.
         """
 
-        response = await self.writer.SetObject(SetObjectRequest(object), metadata=self._metadata)
+        response = await self.writer.SetObject(
+            SetObjectRequest(object=object), metadata=self._metadata
+        )
         return response.result
 
     async def delete_object(
@@ -205,7 +218,10 @@ class Directory:
         """
 
         await self.writer.DeleteObject(
-            DeleteObjectRequest(object_type, object_id, with_relations), metadata=self._metadata
+            DeleteObjectRequest(
+                object_type=object_type, object_id=object_id, with_relations=with_relations
+            ),
+            metadata=self._metadata,
         )
 
     async def get_relations(
@@ -253,13 +269,13 @@ class Directory:
 
         response = await self.reader.GetRelations(
             GetRelationsRequest(
-                object_type,
-                object_id,
-                relation,
-                subject_type,
-                subject_id,
-                subject_relation,
-                with_objects,
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+                subject_relation=subject_relation,
+                with_objects=with_objects,
                 page=page,
             ),
             metadata=self._metadata,
@@ -338,13 +354,13 @@ class Directory:
         try:
             response = await self.reader.GetRelation(
                 GetRelationRequest(
-                    object_type,
-                    object_id,
-                    relation,
-                    subject_type,
-                    subject_id,
-                    subject_relation,
-                    with_objects,
+                    object_type=object_type,
+                    object_id=object_id,
+                    relation=relation,
+                    subject_type=subject_type,
+                    subject_id=subject_id,
+                    subject_relation=subject_relation,
+                    with_objects=with_objects,
                 ),
                 metadata=self._metadata,
             )
@@ -356,8 +372,8 @@ class Directory:
             objects = relation_objects(response.objects)
             return RelationResponse(
                 relation=rel,
-                object=objects[ObjectIdentifier(rel.object_type, rel.object.key)],
-                subject=objects[ObjectIdentifier(rel.subject.type, rel.subject.key)],
+                object=objects[ObjectIdentifier(rel.object_type, rel.object_id)],
+                subject=objects[ObjectIdentifier(rel.subject_type, rel.subject_id)],
             )
 
         except RpcError as err:
@@ -380,14 +396,14 @@ class Directory:
         ----
         object_type : str
             the type of the relation's object.
-        object_key: str
-            the key of the relation's object.
+        object_id: str
+            the id of the relation's object.
         relation: str
             the type of relation.
         subject_type : str
             the type of the relation's subject.
-        subject_key: str
-            the key of the relation's subject.
+        subject_id: str
+            the id of the relation's subject.
         subject_relation: str
             optional type of subject relation.
 
@@ -399,12 +415,12 @@ class Directory:
         response = await self.writer.SetRelation(
             SetRelationRequest(
                 relation=Relation(
-                    object_type,
-                    object_id,
-                    relation,
-                    subject_type,
-                    subject_id,
-                    subject_relation,
+                    object_type=object_type,
+                    object_id=object_id,
+                    relation=relation,
+                    subject_type=subject_type,
+                    subject_id=subject_id,
+                    subject_relation=subject_relation,
                 )
             ),
             metadata=self._metadata,
@@ -444,7 +460,12 @@ class Directory:
 
         await self.writer.DeleteRelation(
             DeleteRelationRequest(
-                object_type, object_id, relation, subject_type, subject_id, subject_relation
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+                subject_relation=subject_relation,
             ),
             metadata=self._metadata,
         )
@@ -478,7 +499,13 @@ class Directory:
         True or False
         """
         response = await self.reader.Check(
-            CheckRequest(object_type, object_id, relation, subject_type, subject_id),
+            CheckRequest(
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+            ),
             metadata=self._metadata,
         )
         return response.check
@@ -512,7 +539,13 @@ class Directory:
         """
 
         response = await self.reader.CheckRelation(
-            CheckRelationRequest(object_type, object_id, relation, subject_type, subject_id),
+            CheckRelationRequest(
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+            ),
             metadata=self._metadata,
         )
         return response.check
@@ -546,7 +579,13 @@ class Directory:
         """
 
         response = await self.reader.CheckPermission(
-            CheckPermissionRequest(object_type, object_id, permission, subject_type, subject_id),
+            CheckPermissionRequest(
+                object_type=object_type,
+                object_id=object_id,
+                permission=permission,
+                subject_type=subject_type,
+                subject_id=subject_id,
+            ),
             metadata=self._metadata,
         )
         return response.check

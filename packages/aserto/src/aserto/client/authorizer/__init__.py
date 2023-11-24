@@ -54,9 +54,8 @@ class AuthorizerClient:
             identity=identity.value or "",
             type=identity.type,
         )
-        result = urlparse(self._options.url)
         self._channel = grpc.secure_channel(
-            target=f"{result.hostname}:{result.port}",
+            target=self._options.url,
             credentials=grpc.ssl_channel_credentials(self._options.cert),
         )
         self.client = AuthorizerStub(self._channel)
@@ -318,3 +317,8 @@ class AuthorizerClient:
         )
 
         return response
+
+    def close(self) -> None:
+        """Closes the gRPC channel"""
+
+        self._channel.close()
