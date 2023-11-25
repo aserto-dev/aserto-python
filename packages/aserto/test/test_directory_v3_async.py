@@ -1,11 +1,12 @@
 import asyncio
+import datetime
 
-import grpc.aio as grpc
 import pytest
 from grpc import RpcError
 
 from aserto.client.directory.v3.aio import (
     Directory,
+    ETagMismatchError,
     NotFoundError,
     Object,
     ObjectIdentifier,
@@ -261,3 +262,54 @@ async def test_check_permission(directory: Directory):
 
     assert check_true == True
     assert check_false == False
+
+
+@pytest.mark.asyncio
+async def test_get_manifest(directory: Directory):
+    manifest = await directory.get_manifest()
+
+    with open("test/assets/manifest.yaml", "rb") as f:
+        expected = f.read()
+
+    assert manifest is not None
+    assert manifest.etag
+    assert manifest.updated_at.date() == datetime.datetime.now().date()
+    assert manifest.body == expected
+
+
+@pytest.mark.asyncio
+async def test_get_manifest_not_modified(directory: Directory):
+    m1 = await directory.get_manifest()
+    assert m1 is not None
+
+    m2 = await directory.get_manifest(m1.etag)
+    assert m2 is None
+
+
+@pytest.mark.asyncio
+async def test_set_manifest(directory: Directory):
+    with open("test/assets/manifest.yaml", "rb") as f:
+        manifest = f.read()
+
+    manifest += b"\n  foo: {}"
+
+    await directory.set_manifest(manifest)
+
+    new_manifest = await directory.get_manifest()
+
+    assert new_manifest.body == manifest
+
+
+@pytest.mark.asyncio
+async def test_set_manifest_if_match(directory: Directory):
+    with open("test/assets/manifest.yaml", "rb") as f:
+        manifest = f.read()
+
+    manifest += b"\n  bar: {}"
+
+    with pytest.raises(ETagMismatchError):
+        await directory.set_manifest(manifest, etag="1234")
+
+    current = await directory.get_manifest()
+
+    await directory.set_manifest(manifest, etag=current.etag)

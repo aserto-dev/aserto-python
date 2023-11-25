@@ -7,7 +7,7 @@ class NotFoundError(Exception):
     pass
 
 
-def get_metadata(api_key, tenant_id) -> Tuple:
+def get_metadata(api_key, tenant_id) -> Tuple[Tuple[str, str]]:
     md = ()
     if api_key:
         md += (("authorization", f"basic {api_key}"),)

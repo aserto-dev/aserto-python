@@ -1,9 +1,16 @@
+import datetime
 from dataclasses import dataclass
 from typing import List, Mapping, Optional
 
 from aserto.directory.common.v3 import Object
 from aserto.directory.common.v3 import ObjectIdentifier as ObjectIdentifierProto
 from aserto.directory.common.v3 import PaginationResponse, Relation
+
+MAX_CHUNK_BYTES = 64 * 1024
+
+
+class ETagMismatchError(Exception):
+    pass
 
 
 @dataclass(frozen=True)
@@ -46,6 +53,13 @@ class RelationsResponse:
     relations: List[Relation]
     objects: Optional[Mapping[ObjectIdentifier, Object]]
     page: PaginationResponse
+
+
+@dataclass(frozen=True)
+class Manifest:
+    updated_at: datetime.datetime
+    etag: str
+    body: Optional[bytes]
 
 
 def relation_objects(objects: Mapping[str, Object]) -> Mapping[ObjectIdentifier, Object]:

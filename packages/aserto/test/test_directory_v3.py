@@ -1,8 +1,11 @@
+import datetime
+
 import grpc
 import pytest
 
 from aserto.client.directory.v3 import (
     Directory,
+    ETagMismatchError,
     NotFoundError,
     Object,
     ObjectIdentifier,
@@ -229,3 +232,50 @@ def test_check_permission(directory: Directory):
 
     assert check_true == True
     assert check_false == False
+
+
+def test_get_manifest(directory: Directory):
+    manifest = directory.get_manifest()
+
+    with open("test/assets/manifest.yaml", "rb") as f:
+        expected = f.read()
+
+    assert manifest is not None
+    assert manifest.etag
+    assert manifest.updated_at.date() == datetime.datetime.now().date()
+    assert manifest.body == expected
+
+
+def test_get_manifest_not_modified(directory: Directory):
+    m1 = directory.get_manifest()
+    assert m1 is not None
+
+    m2 = directory.get_manifest(m1.etag)
+    assert m2 is None
+
+
+def test_set_manifest(directory: Directory):
+    with open("test/assets/manifest.yaml", "rb") as f:
+        manifest = f.read()
+
+    manifest += b"\n  foo: {}"
+
+    directory.set_manifest(manifest)
+
+    new_manifest = directory.get_manifest()
+
+    assert new_manifest.body == manifest
+
+
+def test_set_manifest_if_match(directory: Directory):
+    with open("test/assets/manifest.yaml", "rb") as f:
+        manifest = f.read()
+
+    manifest += b"\n  bar: {}"
+
+    with pytest.raises(ETagMismatchError):
+        directory.set_manifest(manifest, etag="1234")
+
+    current = directory.get_manifest()
+
+    directory.set_manifest(manifest, etag=current.etag)

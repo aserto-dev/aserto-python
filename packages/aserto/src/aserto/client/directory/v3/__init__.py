@@ -1,4 +1,5 @@
-from typing import List, Literal, Optional, Sequence, Tuple, Union, overload
+import datetime
+from typing import Iterable, List, Literal, Optional, Sequence, Union, overload
 
 import grpc
 from aserto.directory.common.v3 import (
@@ -9,6 +10,13 @@ from aserto.directory.common.v3 import (
 )
 from aserto.directory.exporter.v3 import ExporterStub
 from aserto.directory.importer.v3 import ImporterStub
+from aserto.directory.model.v3 import (
+    Body,
+    GetManifestRequest,
+    Metadata,
+    ModelStub,
+    SetManifestRequest,
+)
 from aserto.directory.reader.v3 import (
     CheckPermissionRequest,
     CheckRelationRequest,
@@ -32,6 +40,9 @@ from aserto.directory.writer.v3 import (
 
 from aserto.client.directory import NotFoundError, channel_credentials, get_metadata
 from aserto.client.directory.v3.helpers import (
+    MAX_CHUNK_BYTES,
+    ETagMismatchError,
+    Manifest,
     ObjectIdentifier,
     RelationResponse,
     RelationsResponse,
@@ -53,6 +64,7 @@ class Directory:
         self._metadata = get_metadata(api_key=api_key, tenant_id=tenant_id)
         self.reader = ReaderStub(self._channel)
         self.writer = WriterStub(self._channel)
+        self.model = ModelStub(self._channel)
         self.importer = ImporterStub(self._channel)
         self.exporter = ExporterStub(self._channel)
 
@@ -569,6 +581,7 @@ class Directory:
             the type of subject to check.
         subject_id: str
             the id of the subject to check.
+
         Returns
         ----
         True or False
@@ -586,27 +599,81 @@ class Directory:
         )
         return response.check
 
+    @overload
+    def get_manifest(self) -> Manifest:
+        ...
+
+    @overload
+    def get_manifest(self, etag: str) -> Optional[Manifest]:
+        ...
+
+    def get_manifest(self, etag: str = "") -> Optional[Manifest]:
+        """Returns the current manifest.
+        Returns None if etag is provided and the manifest has not changed.
+
+        Parameters
+        ----
+        etag: str
+            etag of the last known manifest. If the manifest has not changed, None is returned.
+
+        Returns
+        ----
+        The current manifest or None.
+        """
+        headers = self._metadata
+        if etag:
+            headers += (("if-none-match", etag),)
+
+        updated_at = datetime.datetime.min
+        current_etag = ""
+        body: bytes = b""
+        for resp in self.model.GetManifest(GetManifestRequest(), metadata=headers):
+            field = resp.WhichOneof("msg")
+            if field == "metadata":
+                updated_at = resp.metadata.updated_at.ToDatetime()
+                current_etag = resp.metadata.etag
+            elif field == "body":
+                body += resp.body.data
+
+        if etag and not body:
+            return None
+
+        return Manifest(updated_at, current_etag, body)
+
+    def set_manifest(self, body: bytes, etag: str = "") -> None:
+        """Sets the manifest.
+
+        Parameters
+        ----
+        body: bytes
+            the manifest body.
+
+        Returns
+        ----
+        None
+        """
+
+        headers = self._metadata
+        if etag:
+            headers += (("if-match", etag),)
+
+        try:
+            self.model.SetManifest(
+                (
+                    SetManifestRequest(body=Body(data=body[i : i + MAX_CHUNK_BYTES]))
+                    for i in range(0, len(body), MAX_CHUNK_BYTES)
+                ),
+                metadata=headers,
+            )
+        except grpc.RpcError as err:
+            if err.code() == grpc.StatusCode.FAILED_PRECONDITION:  # type: ignore
+                raise ETagMismatchError from err
+            raise
+
     def close(self) -> None:
         """Closes the gRPC channel"""
 
         self._channel.close()
-
-    @staticmethod
-    def _get_metadata(api_key, tenant_id) -> Tuple:
-        md = ()
-        if api_key:
-            md += (("authorization", f"basic {api_key}"),)
-        if tenant_id:
-            md += (("aserto-tenant-id", tenant_id),)
-        return md
-
-    @staticmethod
-    def _channel_credentials(cert) -> grpc.ChannelCredentials:
-        if cert:
-            with open(cert, "rb") as f:
-                return grpc.ssl_channel_credentials(f.read())
-        else:
-            return grpc.ssl_channel_credentials()
 
     def __enter__(self):
         return self
