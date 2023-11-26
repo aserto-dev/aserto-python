@@ -62,6 +62,28 @@ class Manifest:
     body: Optional[bytes]
 
 
+@dataclass(frozen=True)
+class ImportCounter:
+    recv: int = 0
+    set: int = 0
+    delete: int = 0
+    error: int = 0
+
+    def add(self, other: "ImportCounter") -> "ImportCounter":
+        return ImportCounter(
+            recv=self.recv + other.recv,
+            set=self.set + other.set,
+            delete=self.delete + other.delete,
+            error=self.error + other.error,
+        )
+
+
+@dataclass(frozen=True)
+class ImportResponse:
+    objects: ImportCounter
+    relations: ImportCounter
+
+
 def relation_objects(objects: Mapping[str, Object]) -> Mapping[ObjectIdentifier, Object]:
     res: Mapping[ObjectIdentifier, Object] = {}
     for k, obj in objects.items():

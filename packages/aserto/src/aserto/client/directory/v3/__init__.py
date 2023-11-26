@@ -1,5 +1,5 @@
 import datetime
-from typing import Iterable, List, Literal, Optional, Sequence, Union, overload
+from typing import Iterator, List, Literal, Optional, Sequence, Union, overload
 
 import grpc
 from aserto.directory.common.v3 import (
@@ -9,11 +9,10 @@ from aserto.directory.common.v3 import (
     Relation,
 )
 from aserto.directory.exporter.v3 import ExporterStub
-from aserto.directory.importer.v3 import ImporterStub
+from aserto.directory.importer.v3 import ImporterStub, ImportRequest, Opcode
 from aserto.directory.model.v3 import (
     Body,
     GetManifestRequest,
-    Metadata,
     ModelStub,
     SetManifestRequest,
 )
@@ -42,6 +41,8 @@ from aserto.client.directory import NotFoundError, channel_credentials, get_meta
 from aserto.client.directory.v3.helpers import (
     MAX_CHUNK_BYTES,
     ETagMismatchError,
+    ImportCounter,
+    ImportResponse,
     Manifest,
     ObjectIdentifier,
     RelationResponse,
@@ -669,6 +670,31 @@ class Directory:
             if err.code() == grpc.StatusCode.FAILED_PRECONDITION:  # type: ignore
                 raise ETagMismatchError from err
             raise
+
+    def import_data(self, data: Sequence[Union[Object, Relation]]) -> ImportResponse:
+        def _import_iter() -> Iterator[ImportRequest]:
+            for item in data:
+                if isinstance(item, Object):
+                    yield ImportRequest(op_code=Opcode.OPCODE_SET, object=item)
+                elif isinstance(item, Relation):
+                    yield ImportRequest(op_code=Opcode.OPCODE_SET, relation=item)
+
+        obj_counter = ImportCounter()
+        rel_counter = ImportCounter()
+
+        for r in self.importer.Import(_import_iter(), metadata=self._metadata):
+            if r.object:
+                obj_counter = obj_counter.add(
+                    ImportCounter(r.object.recv, r.object.set, r.object.delete, r.object.error)
+                )
+            if r.relation:
+                rel_counter = rel_counter.add(
+                    ImportCounter(
+                        r.relation.recv, r.relation.set, r.relation.delete, r.relation.error
+                    )
+                )
+
+        return ImportResponse(obj_counter, rel_counter)
 
     def close(self) -> None:
         """Closes the gRPC channel"""

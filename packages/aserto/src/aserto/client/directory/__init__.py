@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Literal, Tuple
 
 from grpc import ChannelCredentials, ssl_channel_credentials
 
@@ -7,8 +7,11 @@ class NotFoundError(Exception):
     pass
 
 
-def get_metadata(api_key, tenant_id) -> Tuple[Tuple[str, str]]:
-    md = ()
+Header = Literal["authorization", "aserto-tenant-id", "if-match", "if-none-match"]
+
+
+def get_metadata(api_key, tenant_id) -> Tuple[Tuple[Header, str], ...]:
+    md: Tuple[Tuple[Header, str], ...] = ()
     if api_key:
         md += (("authorization", f"basic {api_key}"),)
     if tenant_id:

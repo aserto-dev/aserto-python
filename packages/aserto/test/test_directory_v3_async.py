@@ -11,6 +11,7 @@ from aserto.client.directory.v3.aio import (
     Object,
     ObjectIdentifier,
     PaginationRequest,
+    Relation,
 )
 
 
@@ -291,7 +292,7 @@ async def test_set_manifest(directory: Directory):
     with open("test/assets/manifest.yaml", "rb") as f:
         manifest = f.read()
 
-    manifest += b"\n  foo: {}"
+    manifest += b"\n  baz: {}"
 
     await directory.set_manifest(manifest)
 
@@ -305,7 +306,7 @@ async def test_set_manifest_if_match(directory: Directory):
     with open("test/assets/manifest.yaml", "rb") as f:
         manifest = f.read()
 
-    manifest += b"\n  bar: {}"
+    manifest += b"\n  bam: {}"
 
     with pytest.raises(ETagMismatchError):
         await directory.set_manifest(manifest, etag="1234")
@@ -313,3 +314,23 @@ async def test_set_manifest_if_match(directory: Directory):
     current = await directory.get_manifest()
 
     await directory.set_manifest(manifest, etag=current.etag)
+
+
+@pytest.mark.asyncio
+async def test_import(directory: Directory):
+    async def data():
+        yield Object(type="user", id="test@acmecorp.com")
+        yield Relation(
+            object_type="user",
+            object_id="rick@the-citadel.com",
+            relation="manager",
+            subject_type="user",
+            subject_id="test@acmecorp.com",
+        )
+
+    resp = await directory.import_data(data())
+    assert resp is not None
+    assert resp.objects.recv == 1
+    assert resp.objects.set == 1
+    assert resp.relations.recv == 1
+    assert resp.relations.set == 1

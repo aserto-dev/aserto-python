@@ -10,6 +10,7 @@ from aserto.client.directory.v3 import (
     Object,
     ObjectIdentifier,
     PaginationRequest,
+    Relation,
 )
 
 
@@ -279,3 +280,23 @@ def test_set_manifest_if_match(directory: Directory):
     current = directory.get_manifest()
 
     directory.set_manifest(manifest, etag=current.etag)
+
+
+def test_import(directory: Directory):
+    data = (
+        Object(type="user", id="test@acmecorp.com"),
+        Relation(
+            object_type="user",
+            object_id="rick@the-citadel.com",
+            relation="manager",
+            subject_type="user",
+            subject_id="test@acmecorp.com",
+        ),
+    )
+
+    resp = directory.import_data(data)
+    assert resp is not None
+    assert resp.objects.recv == 1
+    assert resp.objects.set == 1
+    assert resp.relations.recv == 1
+    assert resp.relations.set == 1
