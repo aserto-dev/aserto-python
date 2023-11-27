@@ -31,7 +31,7 @@ packages = [
 aiohttp = "^3.8.1"
 python = "^3.8"
 python-jose = {version = "^3.3.0", extras = ["cryptography"]}
-typing-extensions = "^3.10.0"
+typing-extensions = "^4.8.0"
 
 [tool.poetry.dev-dependencies]
 black = "21.7b0"
