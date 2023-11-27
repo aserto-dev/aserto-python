@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable
 
 from aserto.client import AuthorizerOptions, Identity
-from aserto_idp.oidc import AccessTokenError, identity_provider as oidc_idp
+from aserto_idp.oidc import AccessTokenError
+from aserto_idp.oidc import identity_provider as oidc_idp
 from flask import request
-from typing_extensions import TypedDict
 
 ASERTO_AUTHORIZER_URL = "https://authorizer.prod.aserto.com"
 

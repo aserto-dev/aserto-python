@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 from flask.wrappers import Response
 from flask_cors import CORS
 
-from flask_aserto import AsertoMiddleware, AuthorizationError
+from flask_aserto.aio import AsertoMiddleware, AuthorizationError
 
 from .aserto_options import load_aserto_options_from_environment
 from .people_client import PeopleClient
@@ -15,7 +15,7 @@ CORS(app, headers=["Content-Type", "Authorization"])
 aserto_options = load_aserto_options_from_environment()
 aserto = AsertoMiddleware(
     authorizer_options=aserto_options.authorizer_options,
-    policy_name=aserto_options.policy_name,
+    policy_instance_name=aserto_options.policy_name,
     policy_path_root=aserto_options.policy_path_root,
     identity_provider=aserto_options.identity_provider,
 )
@@ -25,19 +25,19 @@ aserto.register_display_state_map(app)
 
 
 # Handle `AuthorizationError`s that may be raised by Aserto
-@app.errorhandler(AuthorizationError)  # type: ignore[arg-type]
+@app.errorhandler(AuthorizationError)
 def handle_auth_error(exception: AuthorizationError) -> Response:
     return Response(response=f"Forbidden by policy {exception.policy_path}", status=403)
 
 
 # Use `authorize` as middleware in the route dispatch path
-@app.route("/api/users/<id>", methods=["GET", "PUT", "POST", "DELETE"])
 @aserto.authorize
+@app.route("/api/users/<id>", methods=["GET", "PUT", "POST", "DELETE"])
 async def api_user(id: str) -> Response:
     people_client = PeopleClient(
         tenant_id=aserto_options.tenant_id,
-        directory_api_key=aserto_options.directory_api_key,
-        directory_url=aserto_options.directory_url,
+        authorizer_api_key=aserto_options.authorizer_options.api_key or "",
+        authorizer_url=aserto_options.authorizer_options.url or "",
     )
 
     if request.method == "GET":
@@ -58,13 +58,13 @@ async def api_user(id: str) -> Response:
 # for a more imperative style of authorization
 @app.route("/api/users", methods=["GET"])
 async def api_users() -> Response:
-    if not await aserto.check("allowed"):
+    if not await aserto.is_allowed("allowed"):
         return Response(status=403)
 
     people_client = PeopleClient(
         tenant_id=aserto_options.tenant_id,
-        directory_api_key=aserto_options.directory_api_key,
-        directory_url=aserto_options.directory_url,
+        authorizer_api_key=aserto_options.authorizer_options.api_key or "",
+        authorizer_url=aserto_options.authorizer_options.url or "",
     )
 
     return jsonify(await people_client.list_people())

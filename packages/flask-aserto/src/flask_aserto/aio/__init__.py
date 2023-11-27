@@ -1,9 +1,10 @@
+from asyncio import gather
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Callable, Optional, TypeVar, Union, cast, overload
+from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, cast, overload
 
 from aserto.client import AuthorizerOptions, Identity, ResourceContext
-from aserto.client.authorizer import AuthorizerClient
+from aserto.client.authorizer.aio import AuthorizerClient
 from flask import Flask, jsonify
 from flask.wrappers import Response
 
@@ -11,10 +12,10 @@ from ._defaults import (
     DEFAULT_DISPLAY_STATE_MAP_ENDPOINT,
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP,
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT,
-    create_default_policy_path_resolver,
     IdentityMapper,
+    ResourceMapper,
     StringMapper,
-    ResourceMapper
+    create_default_policy_path_resolver,
 )
 
 __all__ = ["AsertoMiddleware", "AuthorizationError"]
@@ -26,7 +27,8 @@ class AuthorizationError(Exception):
     policy_path: str
 
 
-Handler = TypeVar("Handler", bound=Callable[..., Union[Response, Response]])
+Handler = Callable[..., Awaitable[Response]]
+
 
 class AsertoMiddleware:
     def __init__(
@@ -35,11 +37,11 @@ class AsertoMiddleware:
         authorizer_options: AuthorizerOptions,
         policy_path_root: str,
         identity_provider: IdentityMapper,
-        policy_instance_name: Optional[str]= None,
-        policy_instance_label: Optional[str]= None,
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         policy_path_resolver: Optional[StringMapper] = None,
         resource_context_provider: Optional[ResourceMapper] = None,
-    ):
+    ) -> None:
         self._authorizer_options = authorizer_options
         self._identity_provider = identity_provider
         self._policy_instance_name = policy_instance_name
@@ -55,11 +57,11 @@ class AsertoMiddleware:
         self._resource_context_provider = (
             resource_context_provider
             if resource_context_provider is not None
-            else DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT
+            else DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT()
         )
 
-    def _generate_client(self) -> AuthorizerClient:
-        identity = self._identity_provider()
+    async def _generate_client(self) -> AuthorizerClient:
+        identity = await self._identity_provider()
 
         return AuthorizerClient(
             identity=identity,
@@ -75,7 +77,9 @@ class AsertoMiddleware:
                 policy_path_root=kwargs.get("policy_path_root", self._policy_path_root),
                 identity_provider=kwargs.get("identity_provider", self._identity_provider),
                 policy_instance_name=kwargs.get("policy_instance_name", self._policy_instance_name),
-                policy_instance_label=kwargs.get("policy_instance_label", self._policy_instance_label),
+                policy_instance_label=kwargs.get(
+                    "policy_instance_label", self._policy_instance_label
+                ),
                 policy_path_resolver=kwargs.get("policy_path_resolver", self._policy_path_resolver),
                 resource_context_provider=kwargs.get(
                     "resource_context_provider", self._resource_context_provider
@@ -84,11 +88,11 @@ class AsertoMiddleware:
         )
 
     @overload
-    def is_allowed(self, decision: str) -> bool:
+    async def is_allowed(self, decision: str) -> bool:
         ...
 
     @overload
-    def is_allowed(
+    async def is_allowed(
         self,
         decision: str,
         *,
@@ -98,19 +102,19 @@ class AsertoMiddleware:
         policy_instance_label: str = ...,
         policy_path_root: str = ...,
         policy_path_resolver: StringMapper = ...,
-        resource_context_provider: ResourceMapper = ...,
+        resource_context_provider: ResourceContext = ...,
     ) -> bool:
         ...
 
-    def is_allowed(self, decision: str, **kwargs: Any) -> bool:
-        return self._with_overrides(**kwargs)._is_allowed(decision)
+    async def is_allowed(self, decision: str, **kwargs: Any) -> bool:
+        return await self._with_overrides(**kwargs)._is_allowed(decision)
 
-    def _is_allowed(self, decision: str) -> bool:
-        client = self._generate_client()
-        resource_context = self._resource_context_provider()
-        policy_path = self._policy_path_resolver()
-        
-        decisions = client.decisions(
+    async def _is_allowed(self, decision: str) -> bool:
+        client = await self._generate_client()
+        resource_context = await self._resource_context_provider()
+        policy_path = await self._policy_path_resolver()
+
+        decisions = await client.decisions(
             policy_path=policy_path,
             decisions=(decision,),
             policy_instance_name=self._policy_instance_name,
@@ -120,11 +124,11 @@ class AsertoMiddleware:
         return decisions[decision]
 
     @overload
-    def authorize(self, handler: Handler) -> Handler:
+    async def authorize(self, handler: Handler) -> Handler:
         ...
 
     @overload
-    def authorize(
+    async def authorize(
         self,
         *,
         authorizer_options: AuthorizerOptions = ...,
@@ -136,7 +140,7 @@ class AsertoMiddleware:
     ) -> Callable[[Handler], Handler]:
         ...
 
-    def authorize(  # type: ignore[misc]
+    async def authorize(
         self,
         *args: Any,
         **kwargs: Any,
@@ -166,17 +170,19 @@ class AsertoMiddleware:
     def _authorize(self, handler: Handler) -> Handler:
         if self._policy_instance_name == None:
             raise TypeError(f"{self._policy_instance_name}() should not be None")
-        
+
         if self._policy_instance_label == None:
             self._policy_instance_label = self._policy_instance_name
 
         @wraps(handler)
-        def decorated(*args: Any, **kwargs: Any) -> Response:
-            client = self._generate_client()
-            resource_context = self._resource_context_provider()
-            policy_path = self._policy_path_resolver()
+        async def decorated(*args: Any, **kwargs: Any) -> Response:
+            client, policy_path, resource_context = await gather(
+                self._generate_client(),
+                self._policy_path_resolver(),
+                self._resource_context_provider(),
+            )
 
-            decisions = client.decisions(
+            decisions = await client.decisions(
                 policy_path=policy_path,
                 decisions=("allowed",),
                 policy_instance_name=self._policy_instance_name,
@@ -185,9 +191,11 @@ class AsertoMiddleware:
             )
 
             if not decisions["allowed"]:
-                raise AuthorizationError(policy_instance_name=self._policy_instance_name, policy_path=policy_path) # type: ignore[arg-type]
+                raise AuthorizationError(
+                    policy_instance_name=self._policy_instance_name or "", policy_path=policy_path
+                )
 
-            return handler(*args, **kwargs)
+            return await handler(*args, **kwargs)
 
         return cast(Handler, decorated)
 
@@ -199,15 +207,17 @@ class AsertoMiddleware:
         resource_context_provider: Optional[ResourceMapper] = None,
     ) -> Flask:
         @app.route(endpoint, methods=["GET", "POST"])
-        def __displaystatemap() -> Response:
+        async def __displaystatemap() -> Response:
             nonlocal resource_context_provider
             if resource_context_provider is None:
-                resource_context_provider = DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP
+                resource_context_provider = DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
 
-            client = self._generate_client()
-            resource_context = resource_context_provider()
+            client, resource_context = await gather(
+                self._generate_client(),
+                resource_context_provider(),
+            )
 
-            display_state_map = client.decision_tree(
+            display_state_map = await client.decision_tree(
                 policy_path_root=self._policy_path_root,
                 decisions=["visible", "enabled"],
                 policy_instance_name=self._policy_instance_name,

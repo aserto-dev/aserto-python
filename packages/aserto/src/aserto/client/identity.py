@@ -11,6 +11,7 @@ IdentityType = Literal[
     "NONE",
     "SUBJECT",
     "JWT",
+    "MANUAL",
 ]
 
 IdentityTypeField = Literal[
@@ -18,6 +19,7 @@ IdentityTypeField = Literal[
     "IDENTITY_TYPE_SUB",
     "IDENTITY_TYPE_JWT",
     "IDENTITY_TYPE_UNKNOWN",
+    "IDENTITY_TYPE_MANUAL",
 ]
 
 
@@ -34,12 +36,17 @@ class Identity:
     def __init__(self, *, type: Literal["JWT"], token: str):
         ...
 
+    @overload
+    def __init__(self, *, type: Literal["MANUAL"], manual: str):
+        ...
+
     def __init__(
         self,
         *,
         type: IdentityType,
         subject: Optional[str] = None,
         token: Optional[str] = None,
+        manual: Optional[str] = None,
     ):
         self._type = type
 
@@ -49,6 +56,8 @@ class Identity:
             self._identity = subject
         elif self._type == "JWT":
             self._identity = token
+        elif self._identity == "MANUAL":
+            self._identity = manual
         else:
             assert_unreachable(self._type)
 
@@ -64,6 +73,8 @@ class Identity:
             return "IDENTITY_TYPE_SUB"
         elif self._type == "JWT":
             return "IDENTITY_TYPE_JWT"
+        elif self._type == "MANUAL":
+            return "IDENTITY_TYPE_MANUAL"
         else:
             assert_unreachable(self._type)
 
@@ -80,6 +91,8 @@ class Identity:
             fields["subject"] = cast(str, self._identity)
         elif self._type == "JWT":
             fields["token"] = cast(str, self._identity)
+        elif self._type == "MANUAL":
+            fields["manual"] = cast(str, self._identity)
         else:
             assert_unreachable(self._type)
 
