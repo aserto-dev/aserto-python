@@ -7,6 +7,7 @@ from grpc import RpcError
 from aserto.client.directory.v3.aio import (
     Directory,
     ETagMismatchError,
+    ExportOption,
     NotFoundError,
     Object,
     ObjectIdentifier,
@@ -334,3 +335,17 @@ async def test_import(directory: Directory):
     assert resp.objects.set == 1
     assert resp.relations.recv == 1
     assert resp.relations.set == 1
+
+
+@pytest.mark.asyncio
+async def test_export(directory: Directory):
+    obj_count = 0
+    rel_count = 0
+    async for item in directory.export_data(ExportOption.OPTION_DATA):
+        if isinstance(item, Object):
+            obj_count += 1
+        elif isinstance(item, Relation):
+            rel_count += 1
+
+    assert obj_count == 19
+    assert rel_count == 20

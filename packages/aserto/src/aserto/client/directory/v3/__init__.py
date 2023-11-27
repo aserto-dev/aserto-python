@@ -8,7 +8,7 @@ from aserto.directory.common.v3 import (
     PaginationResponse,
     Relation,
 )
-from aserto.directory.exporter.v3 import ExporterStub
+from aserto.directory.exporter.v3 import ExporterStub, ExportRequest
 from aserto.directory.importer.v3 import ImporterStub, ImportRequest, Opcode
 from aserto.directory.model.v3 import (
     Body,
@@ -36,11 +36,13 @@ from aserto.directory.writer.v3 import (
     SetRelationRequest,
     WriterStub,
 )
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from aserto.client.directory import NotFoundError, channel_credentials, get_metadata
 from aserto.client.directory.v3.helpers import (
     MAX_CHUNK_BYTES,
     ETagMismatchError,
+    ExportOption,
     ImportCounter,
     ImportResponse,
     Manifest,
@@ -672,6 +674,19 @@ class Directory:
             raise
 
     def import_data(self, data: Sequence[Union[Object, Relation]]) -> ImportResponse:
+        """Imports data into the directory.
+
+        Parameters
+        ----
+        data: Sequence[Union[Object, Relation]]
+            a sequence of objects and/or relations to import.
+
+        Returns:
+        ----
+        ImportResponse:
+            a summary of the total number of object and relations imported.
+        """
+
         def _import_iter() -> Iterator[ImportRequest]:
             for item in data:
                 if isinstance(item, Object):
@@ -695,6 +710,32 @@ class Directory:
                 )
 
         return ImportResponse(obj_counter, rel_counter)
+
+    def export_data(
+        self, options: ExportOption, start_from: Optional[datetime.datetime] = None
+    ) -> Iterator[Union[Object, Relation]]:
+        """Exports data from the directory.
+
+        Parameters
+        ----
+        options: ExportOption
+            OPTION_DATA_OBJECTS - only export objects
+            OPTION_DATA_RELATIONS - only export relations
+            OPTION_DATA - export both objects and relations
+
+        start_from: Optional[datetime.datetime]
+            if provided, only objects and relations that have been modified after this date are exported.
+        """
+        req = ExportRequest(options=options)
+        if start_from is not None:
+            req.start_from.FromDatetime(dt=start_from)
+
+        for resp in self.exporter.Export(req, metadata=self._metadata):
+            field = resp.WhichOneof("msg")
+            if field == "object":
+                yield resp.object
+            elif field == "relation":
+                yield resp.relation
 
     def close(self) -> None:
         """Closes the gRPC channel"""

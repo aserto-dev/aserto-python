@@ -5,12 +5,16 @@ from typing import List, Mapping, Optional
 from aserto.directory.common.v3 import Object
 from aserto.directory.common.v3 import ObjectIdentifier as ObjectIdentifierProto
 from aserto.directory.common.v3 import PaginationResponse, Relation
+from aserto.directory.exporter.v3 import Option
 
 MAX_CHUNK_BYTES = 64 * 1024
 
 
 class ETagMismatchError(Exception):
     pass
+
+
+ExportOption = Option
 
 
 @dataclass(frozen=True)

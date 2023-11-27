@@ -6,6 +6,7 @@ import pytest
 from aserto.client.directory.v3 import (
     Directory,
     ETagMismatchError,
+    ExportOption,
     NotFoundError,
     Object,
     ObjectIdentifier,
@@ -283,6 +284,16 @@ def test_set_manifest_if_match(directory: Directory):
 
 
 def test_import(directory: Directory):
+    with pytest.raises(NotFoundError):
+        # verify that the object doesn't exist
+        directory.get_object("user", "test@acmecorp.com")
+
+    with pytest.raises(NotFoundError):
+        # verify that the relation doesn't exist
+        directory.get_relation(
+            "user", "rick@the-citadel.com", "manager", "user", "test@acmecorp.com"
+        )
+
     data = (
         Object(type="user", id="test@acmecorp.com"),
         Relation(
@@ -300,3 +311,24 @@ def test_import(directory: Directory):
     assert resp.objects.set == 1
     assert resp.relations.recv == 1
     assert resp.relations.set == 1
+
+    obj = directory.get_object("user", "test@acmecorp.com")
+    assert obj is not None
+
+    rel = directory.get_relation(
+        "user", "rick@the-citadel.com", "manager", "user", "test@acmecorp.com"
+    )
+    assert rel is not None
+
+
+def test_export(directory: Directory):
+    obj_count = 0
+    rel_count = 0
+    for item in directory.export_data(ExportOption.OPTION_DATA):
+        if isinstance(item, Object):
+            obj_count += 1
+        elif isinstance(item, Relation):
+            rel_count += 1
+
+    assert obj_count == 19
+    assert rel_count == 20
