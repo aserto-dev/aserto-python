@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta
-from typing import AsyncGenerator, Collection, Dict, Mapping, Optional, Union
+from typing import Collection, Dict, Literal, Mapping, Optional, Union
 from urllib.parse import urlparse
 
 import google.protobuf.struct_pb2 as structpb
@@ -29,7 +29,6 @@ from aserto.authorizer.v2.api import (
     PolicyContext,
     PolicyInstance,
 )
-from typing_extensions import Literal
 
 from ..._deadline import monotonic_time_from_deadline
 from ..._typing import assert_unreachable
