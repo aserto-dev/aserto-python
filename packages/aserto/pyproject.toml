@@ -36,10 +36,10 @@ aserto-authorizer = {path = "../../../python-authorizer", develop = true}
 aserto-directory = {path = "../../../python-directory", develop = true}
 
 [tool.poetry.dev-dependencies]
-black = "21.7b0"
-isort= "^5.9.3"
-pytest-asyncio = "^0.15.1"
-pyright = "^1.1.336"
+black = "^23.0"
+isort= "^5.9.0"
+pytest-asyncio = "^0.15.0"
+pyright = "^1.1.0"
 requests = "^2.31.0"
 
 [tool.black]
