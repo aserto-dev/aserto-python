@@ -1,8 +1,6 @@
 from typing import Dict
 
-import google.protobuf.struct_pb2 as structpb
 import pytest
-from aserto.authorizer.v2 import Decision, DecisionTreeResponse, IsResponse
 
 from aserto.client import AuthorizerOptions, Identity
 from aserto.client.authorizer import AuthorizerClient, DecisionTree, IdentityType

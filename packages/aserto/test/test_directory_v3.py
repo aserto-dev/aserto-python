@@ -12,6 +12,7 @@ from aserto.client.directory.v3 import (
     ObjectIdentifier,
     PaginationRequest,
     Relation,
+    Struct,
 )
 
 
@@ -94,23 +95,46 @@ def test_get_objects_many_not_found(directory: Directory):
         )
 
 
-def test_set_object(directory: Directory):
+def test_set_object_from_message(directory: Directory):
     obj = directory.get_object("user", "beth@the-smiths.com")
-    updated_obj = directory.set_object(
-        Object(
-            type=obj.type,
-            id=obj.id,
-            etag=obj.etag,
-            display_name="Beth Smith (modified)",
-            properties=obj.properties,
-        )
-    )
+    obj.display_name = "Beth Smith (modified)"
+    obj.properties["department"] = "parents"
+    updated_obj = directory.set_object(object=obj)
 
     assert obj.type == updated_obj.type
     assert obj.id == updated_obj.id
     assert obj.properties == updated_obj.properties
     assert updated_obj.display_name == "Beth Smith (modified)"
     assert obj.etag != updated_obj.etag
+
+
+def test_set_object_from_args_with_dict_props(directory: Directory):
+    props = {"email": "user@acmecorp.com"}
+    new_obj = directory.set_object(
+        object_type="user",
+        object_id="new_user",
+        properties=props,
+    )
+
+    assert new_obj.type == "user"
+    assert new_obj.id == "new_user"
+    assert new_obj.display_name == ""
+    assert all(new_obj.properties[k] == v for k, v in props.items())
+
+
+def test_set_object_from_args_with_struct_props(directory: Directory):
+    props = Struct()
+    props.update({"email": "user@acmecorp.com"})
+    new_obj = directory.set_object(
+        object_type="user",
+        object_id="new_user",
+        properties=props,
+    )
+
+    assert new_obj.type == "user"
+    assert new_obj.id == "new_user"
+    assert new_obj.display_name == ""
+    assert all(new_obj.properties[k] == v for k, v in props.items())
 
 
 def test_delete_object(directory: Directory):
@@ -244,7 +268,7 @@ def test_get_manifest(directory: Directory):
 
     assert manifest is not None
     assert manifest.etag
-    assert manifest.updated_at.date() == datetime.datetime.now().date()
+    assert manifest.updated_at.date() == datetime.datetime.utcnow().date()
     assert manifest.body == expected
 
 
@@ -330,5 +354,5 @@ def test_export(directory: Directory):
         elif isinstance(item, Relation):
             rel_count += 1
 
-    assert obj_count == 19
+    assert obj_count == 20
     assert rel_count == 20

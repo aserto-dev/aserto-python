@@ -6,7 +6,6 @@ from aserto.directory.common.v2 import ObjectIdentifier as ObjectIdentifierProto
 from aserto.directory.common.v2 import (
     ObjectTypeIdentifier,
     PaginationRequest,
-    PaginationResponse,
     PermissionIdentifier,
     Relation,
     RelationIdentifier,

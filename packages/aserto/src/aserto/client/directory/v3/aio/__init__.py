@@ -1,56 +1,22 @@
 import datetime
-from typing import (
-    AsyncIterable,
-    AsyncIterator,
-    List,
-    Literal,
-    Optional,
-    Sequence,
-    Union,
-    overload,
-)
+import typing
 
+import aserto.directory.exporter.v3 as exporter
+import aserto.directory.importer.v3 as importer
+import aserto.directory.model.v3 as model
+import aserto.directory.reader.v3 as reader
+import aserto.directory.writer.v3 as writer
+import google.protobuf.json_format as json_format
 import grpc.aio as grpc
-from aserto.directory.common.v3 import (
-    Object,
-    PaginationRequest,
-    PaginationResponse,
-    Relation,
-)
-from aserto.directory.exporter.v3 import ExporterStub, ExportRequest
-from aserto.directory.importer.v3 import ImporterStub, ImportRequest, Opcode
-from aserto.directory.model.v3 import (
-    Body,
-    GetManifestRequest,
-    Metadata,
-    ModelStub,
-    SetManifestRequest,
-)
-from aserto.directory.reader.v3 import (
-    CheckPermissionRequest,
-    CheckRelationRequest,
-    CheckRequest,
-    GetObjectManyRequest,
-    GetObjectRequest,
-    GetObjectResponse,
-    GetObjectsRequest,
-    GetObjectsResponse,
-    GetRelationRequest,
-    GetRelationsRequest,
-    ReaderStub,
-)
-from aserto.directory.writer.v3 import (
-    DeleteObjectRequest,
-    DeleteRelationRequest,
-    SetObjectRequest,
-    SetRelationRequest,
-    WriterStub,
-)
+from aserto.directory.common.v3 import Object, PaginationRequest, Relation
+from aserto.directory.reader.v3 import GetObjectResponse, GetObjectsResponse
+from google.protobuf.struct_pb2 import Struct
 from grpc import RpcError, StatusCode
 
-from aserto.client.directory import NotFoundError, channel_credentials, get_metadata
+import aserto.client.directory as directory
+import aserto.client.directory.v3.helpers as helpers
+from aserto.client.directory import NotFoundError
 from aserto.client.directory.v3.helpers import (
-    MAX_CHUNK_BYTES,
     ETagMismatchError,
     ExportOption,
     ImportCounter,
@@ -59,7 +25,6 @@ from aserto.client.directory.v3.helpers import (
     ObjectIdentifier,
     RelationResponse,
     RelationsResponse,
-    relation_objects,
 )
 
 
@@ -72,19 +37,19 @@ class Directory:
         ca_cert_path: str = "",
     ) -> None:
         self._channel = grpc.secure_channel(
-            target=address, credentials=channel_credentials(cert=ca_cert_path)
+            target=address, credentials=directory.channel_credentials(cert=ca_cert_path)
         )
-        self._metadata = get_metadata(api_key=api_key, tenant_id=tenant_id)
-        self.reader = ReaderStub(self._channel)
-        self.writer = WriterStub(self._channel)
-        self.model = ModelStub(self._channel)
-        self.importer = ImporterStub(self._channel)
-        self.exporter = ExporterStub(self._channel)
+        self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
+        self.reader = reader.ReaderStub(self._channel)
+        self.writer = writer.WriterStub(self._channel)
+        self.model = model.ModelStub(self._channel)
+        self.importer = importer.ImporterStub(self._channel)
+        self.exporter = exporter.ExporterStub(self._channel)
 
     async def get_objects(
-        self, object_type: str = "", page: Optional[PaginationRequest] = None
+        self, object_type: str = "", page: typing.Optional[PaginationRequest] = None
     ) -> GetObjectsResponse:
-        """Lists directory objects, optionally filtered by type.
+        """typing.Lists directory objects, optionally filtered by type.
 
         Parameters
         ----
@@ -103,21 +68,21 @@ class Directory:
         """
 
         response = await self.reader.GetObjects(
-            GetObjectsRequest(object_type=object_type, page=page),
+            reader.GetObjectsRequest(object_type=object_type, page=page),
             metadata=self._metadata,
         )
         return response
 
     async def get_object_many(
         self,
-        identifiers: Sequence[ObjectIdentifier],
-    ) -> List[Object]:
+        identifiers: typing.Sequence[ObjectIdentifier],
+    ) -> typing.List[Object]:
         """Retrieve a set of directory objects.
         Returns a list of all objects that were found.
 
         Parameters
         ----
-        identifiers: Sequence[ObjectIdentifier]
+        identifiers: typing.Sequence[ObjectIdentifier]
             sequence of object type and id pairs.
 
         Returns
@@ -128,7 +93,7 @@ class Directory:
 
         try:
             response = await self.reader.GetObjectMany(
-                GetObjectManyRequest(param=(obj.proto for obj in identifiers)),
+                reader.GetObjectManyRequest(param=(obj.proto for obj in identifiers)),
                 metadata=self._metadata,
             )
             return response.results
@@ -137,23 +102,23 @@ class Directory:
                 raise NotFoundError from err
             raise
 
-    @overload
+    @typing.overload
     async def get_object(
         self,
         object_type: str,
         object_id: str,
-        with_relations: Literal[False] = False,
-        page: Optional[PaginationRequest] = None,
+        with_relations: typing.Literal[False] = False,
+        page: typing.Optional[PaginationRequest] = None,
     ) -> Object:
         ...
 
-    @overload
+    @typing.overload
     async def get_object(
         self,
         object_type: str,
         object_id: str,
-        with_relations: Literal[True],
-        page: Optional[PaginationRequest] = None,
+        with_relations: typing.Literal[True],
+        page: typing.Optional[PaginationRequest] = None,
     ) -> GetObjectResponse:
         ...
 
@@ -162,8 +127,8 @@ class Directory:
         object_type: str,
         object_id: str,
         with_relations: bool = False,
-        page: Optional[PaginationRequest] = None,
-    ) -> Union[Object, GetObjectResponse]:
+        page: typing.Optional[PaginationRequest] = None,
+    ) -> typing.Union[Object, GetObjectResponse]:
         """Retrieve a directory object by its type and id, optionally with the object's relations.
         Raises a NotFoundError if an object with the specified type and id doesn't exist.
 
@@ -175,7 +140,7 @@ class Directory:
             the ID of the object to retrieve.
         with_relations: bool
             if True, the response includes all relations for the object. Default: False.
-        page: Optional[PaginationRequest]
+        page: typing.Optional[PaginationRequest]
             paging information - used to iterate over all relations for an object when with_relations is True.
 
         Returns
@@ -185,7 +150,7 @@ class Directory:
 
         try:
             response = await self.reader.GetObject(
-                GetObjectRequest(
+                reader.GetObjectRequest(
                     object_type=object_type,
                     object_id=object_id,
                     with_relations=with_relations,
@@ -203,7 +168,8 @@ class Directory:
                 raise NotFoundError from err
             raise
 
-    async def set_object(self, object: Object) -> Object:
+    @typing.overload
+    async def set_object(self, *, object: Object) -> Object:
         """Create a new directory object or updates an existing object if an object with the same type and id already exists.
         To update an existing object, the etag field must be set to the value of the current object's etag.
         Returns the created/updated object.
@@ -216,11 +182,77 @@ class Directory:
         ----
         The created/updated object.
         """
+        ...
 
-        response = await self.writer.SetObject(
-            SetObjectRequest(object=object), metadata=self._metadata
-        )
-        return response.result
+    @typing.overload
+    async def set_object(
+        self,
+        *,
+        object_type: str,
+        object_id: str,
+        display_name: str = "",
+        properties: typing.Optional[typing.Union[typing.Mapping[str, typing.Any], Struct]] = None,
+        etag: str = "",
+    ) -> Object:
+        """Create a new directory object or updates an existing object if an object with the same type and id already exists.
+        To update an existing object, the etag argument must be set to the value of the current object's etag.
+        Returns the created/updated object.
+
+        Parameters
+        ----
+        object_type: str
+            the type of object to create/update.
+        object_id: str
+            the ID of the object to create/update.
+        display_name: str,
+            optional display name for the object.
+        properties: typing.Optional[typing.Union[typing.Mapping[str, typing.Any], Struct]],
+            optional JSON properties to set on the object. This can be passed in as a dict with string keys and
+            JSON-serializable values, or as a Struct.
+        etag: str
+            optional etag. If set and the current object's etag doesn't match, the call raises an EtagMismatchError.
+
+        Returns
+        ----
+        The created/updated object.
+        """
+        ...
+
+    async def set_object(
+        self,
+        *,
+        object: typing.Optional[Object] = None,
+        object_type: str = "",
+        object_id: str = "",
+        display_name: str = "",
+        properties: typing.Optional[typing.Union[typing.Mapping[str, typing.Any], Struct]] = None,
+        etag: str = "",
+    ) -> Object:
+        obj = object
+        if obj is None:
+            props = (
+                properties
+                if isinstance(properties, Struct)
+                else json_format.ParseDict(properties, Struct())
+            )
+
+            obj = Object(
+                type=object_type,
+                id=object_id,
+                display_name=display_name,
+                properties=props,
+                etag=etag,
+            )
+
+        try:
+            response = await self.writer.SetObject(
+                writer.SetObjectRequest(object=obj), metadata=self._metadata
+            )
+            return response.result
+        except RpcError as err:
+            if err.code() == grpc.StatusCode.FAILED_PRECONDITION:  # type: ignore
+                raise ETagMismatchError from err
+            raise
 
     async def delete_object(
         self, object_type: str, object_id: str, with_relations: bool = False
@@ -242,7 +274,7 @@ class Directory:
         """
 
         await self.writer.DeleteObject(
-            DeleteObjectRequest(
+            writer.DeleteObjectRequest(
                 object_type=object_type, object_id=object_id, with_relations=with_relations
             ),
             metadata=self._metadata,
@@ -257,7 +289,7 @@ class Directory:
         subject_id: str = "",
         subject_relation: str = "",
         with_objects: bool = False,
-        page: Optional[PaginationRequest] = None,
+        page: typing.Optional[PaginationRequest] = None,
     ) -> RelationsResponse:
         """Searches for relations matching the specified fields.
 
@@ -285,14 +317,14 @@ class Directory:
         GetRelationsResponse
             results: list(Relation)
                 list of directory relations
-            objects: Mapping[str, Object]
+            objects: typing.Mapping[str, Object]
                 map from "type:id" to the corresponding object, if with_objects is True.
             page : PaginationResponse(result_size: int, next_token: str)
                 retrieved page information — the size of the page, and the next page's token
         """
 
         response = await self.reader.GetRelations(
-            GetRelationsRequest(
+            reader.GetRelationsRequest(
                 object_type=object_type,
                 object_id=object_id,
                 relation=relation,
@@ -307,11 +339,11 @@ class Directory:
 
         return RelationsResponse(
             relations=response.results,
-            objects=relation_objects(response.objects),
+            objects=helpers.relation_objects(response.objects),
             page=response.page,
         )
 
-    @overload
+    @typing.overload
     async def get_relation(
         self,
         object_type: str = "",
@@ -320,11 +352,11 @@ class Directory:
         subject_type: str = "",
         subject_id: str = "",
         subject_relation: str = "",
-        with_objects: Literal[False] = False,
+        with_objects: typing.Literal[False] = False,
     ) -> Relation:
         ...
 
-    @overload
+    @typing.overload
     async def get_relation(
         self,
         object_type: str = "",
@@ -333,7 +365,7 @@ class Directory:
         subject_type: str = "",
         subject_id: str = "",
         subject_relation: str = "",
-        with_objects: Literal[True] = True,
+        with_objects: typing.Literal[True] = True,
     ) -> RelationResponse:
         ...
 
@@ -346,7 +378,7 @@ class Directory:
         subject_id: str = "",
         subject_relation: str = "",
         with_objects: bool = False,
-    ) -> Union[Relation, RelationResponse]:
+    ) -> typing.Union[Relation, RelationResponse]:
         """Retrieve a directory relation that matches the specified filters.
         Raises a NotFoundError no matching relation is found.
         Also returns the relation's object and subject if with_objects is set to True.
@@ -377,7 +409,7 @@ class Directory:
 
         try:
             response = await self.reader.GetRelation(
-                GetRelationRequest(
+                reader.GetRelationRequest(
                     object_type=object_type,
                     object_id=object_id,
                     relation=relation,
@@ -393,7 +425,7 @@ class Directory:
                 return response.result
 
             rel = response.result
-            objects = relation_objects(response.objects)
+            objects = helpers.relation_objects(response.objects)
             return RelationResponse(
                 relation=rel,
                 object=objects[ObjectIdentifier(rel.object_type, rel.object_id)],
@@ -437,7 +469,7 @@ class Directory:
         """
 
         response = await self.writer.SetRelation(
-            SetRelationRequest(
+            writer.SetRelationRequest(
                 relation=Relation(
                     object_type=object_type,
                     object_id=object_id,
@@ -458,7 +490,7 @@ class Directory:
         relation: str,
         subject_type: str,
         subject_id: str,
-        subject_relation: Optional[str] = None,
+        subject_relation: typing.Optional[str] = None,
     ) -> None:
         """Deletes a relation.
 
@@ -474,7 +506,7 @@ class Directory:
             the type of the relation's subject.
         subject_id: str
             the id of the relation's subject.
-        subject_relation: Optional[str]
+        subject_relation: typing.Optional[str]
             the type of subject relation, if any.
 
         Returns
@@ -483,7 +515,7 @@ class Directory:
         """
 
         await self.writer.DeleteRelation(
-            DeleteRelationRequest(
+            writer.DeleteRelationRequest(
                 object_type=object_type,
                 object_id=object_id,
                 relation=relation,
@@ -523,7 +555,7 @@ class Directory:
         True or False
         """
         response = await self.reader.Check(
-            CheckRequest(
+            reader.CheckRequest(
                 object_type=object_type,
                 object_id=object_id,
                 relation=relation,
@@ -563,7 +595,7 @@ class Directory:
         """
 
         response = await self.reader.CheckRelation(
-            CheckRelationRequest(
+            reader.CheckRelationRequest(
                 object_type=object_type,
                 object_id=object_id,
                 relation=relation,
@@ -603,7 +635,7 @@ class Directory:
         """
 
         response = await self.reader.CheckPermission(
-            CheckPermissionRequest(
+            reader.CheckPermissionRequest(
                 object_type=object_type,
                 object_id=object_id,
                 permission=permission,
@@ -614,15 +646,15 @@ class Directory:
         )
         return response.check
 
-    @overload
+    @typing.overload
     async def get_manifest(self) -> Manifest:
         ...
 
-    @overload
-    async def get_manifest(self, etag: str) -> Optional[Manifest]:
+    @typing.overload
+    async def get_manifest(self, etag: str) -> typing.Optional[Manifest]:
         ...
 
-    async def get_manifest(self, etag: str = "") -> Optional[Manifest]:
+    async def get_manifest(self, etag: str = "") -> typing.Optional[Manifest]:
         """Returns the current manifest.
         Returns None if etag is provided and the manifest has not changed.
 
@@ -642,7 +674,7 @@ class Directory:
         updated_at = datetime.datetime.min
         current_etag = ""
         body: bytes = b""
-        async for resp in self.model.GetManifest(GetManifestRequest(), metadata=headers):
+        async for resp in self.model.GetManifest(model.GetManifestRequest(), metadata=headers):
             field = resp.WhichOneof("msg")
             if field == "metadata":
                 updated_at = resp.metadata.updated_at.ToDatetime()
@@ -674,9 +706,11 @@ class Directory:
 
         try:
 
-            async def chunks() -> AsyncIterator[SetManifestRequest]:
-                for i in range(0, len(body), MAX_CHUNK_BYTES):
-                    yield SetManifestRequest(body=Body(data=body[i : i + MAX_CHUNK_BYTES]))
+            async def chunks() -> typing.AsyncIterator[model.SetManifestRequest]:
+                for i in range(0, len(body), helpers.MAX_CHUNK_BYTES):
+                    yield model.SetManifestRequest(
+                        body=model.Body(data=body[i : i + helpers.MAX_CHUNK_BYTES])
+                    )
 
             await self.model.SetManifest(chunks(), metadata=headers)
         except RpcError as err:
@@ -684,12 +718,14 @@ class Directory:
                 raise ETagMismatchError from err
             raise
 
-    async def import_data(self, data: AsyncIterable[Union[Object, Relation]]) -> ImportResponse:
+    async def import_data(
+        self, data: typing.AsyncIterable[typing.Union[Object, Relation]]
+    ) -> ImportResponse:
         """Imports data into the directory.
 
         Parameters
         ----
-        data: Sequence[Union[Object, Relation]]
+        data: typing.Sequence[typing.Union[Object, Relation]]
             a sequence of objects and/or relations to import.
 
         Returns:
@@ -698,12 +734,12 @@ class Directory:
             a summary of the total number of object and relations imported.
         """
 
-        async def _import_iter() -> AsyncIterator[ImportRequest]:
+        async def _import_iter() -> typing.AsyncIterator[importer.ImportRequest]:
             async for item in data:
                 if isinstance(item, Object):
-                    yield ImportRequest(op_code=Opcode.OPCODE_SET, object=item)
+                    yield importer.ImportRequest(op_code=importer.Opcode.OPCODE_SET, object=item)
                 elif isinstance(item, Relation):
-                    yield ImportRequest(op_code=Opcode.OPCODE_SET, relation=item)
+                    yield importer.ImportRequest(op_code=importer.Opcode.OPCODE_SET, relation=item)
 
         obj_counter = ImportCounter()
         rel_counter = ImportCounter()
@@ -723,8 +759,8 @@ class Directory:
         return ImportResponse(obj_counter, rel_counter)
 
     async def export_data(
-        self, options: ExportOption, start_from: Optional[datetime.datetime] = None
-    ) -> AsyncIterator[Union[Object, Relation]]:
+        self, options: ExportOption, start_from: typing.Optional[datetime.datetime] = None
+    ) -> typing.AsyncIterator[typing.Union[Object, Relation]]:
         """Exports data from the directory.
 
         Parameters
@@ -734,10 +770,10 @@ class Directory:
             OPTION_DATA_RELATIONS - only export relations
             OPTION_DATA - export both objects and relations
 
-        start_from: Optional[datetime.datetime]
+        start_from: typing.Optional[datetime.datetime]
             if provided, only objects and relations that have been modified after this date are exported.
         """
-        req = ExportRequest(options=options)
+        req = exporter.ExportRequest(options=options)
         if start_from is not None:
             req.start_from.FromDatetime(dt=start_from)
 
