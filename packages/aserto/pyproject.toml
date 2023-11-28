@@ -49,32 +49,6 @@ target-version = ["py37"]
 [tool.isort]
 profile = "black"
 
-[tool.mypy]
-show_error_codes = true
-check_untyped_defs = true
-disallow_any_decorated = true
-disallow_any_explicit = true
-disallow_any_expr = true
-disallow_any_generics = true
-disallow_any_unimported = true
-disallow_incomplete_defs = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-disallow_untyped_defs = true
-implicit_reexport = false
-no_implicit_optional = true
-strict_equality = true
-strict_optional = true
-warn_no_return = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_ignores = true
-
-[[tool.mypy.overrides]]
-module = "test.mock"
-disallow_any_expr = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

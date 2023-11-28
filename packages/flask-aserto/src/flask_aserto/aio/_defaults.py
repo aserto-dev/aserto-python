@@ -1,14 +1,14 @@
 import re
 from typing import Awaitable, Callable
 
-from aserto.client import ResourceContext, Identity
+from aserto.client import Identity, ResourceContext
 from flask import request
 
 __all__ = [
     "create_default_policy_path_resolver",
     "DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT",
     "DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP",
-    "_policy_path_heuristic",
+    "policy_path_heuristic",
 ]
 
 
@@ -17,6 +17,7 @@ DEFAULT_DISPLAY_STATE_MAP_ENDPOINT = "/__displaystatemap"
 IdentityMapper = Callable[[], Awaitable[Identity]]
 StringMapper = Callable[[], Awaitable[str]]
 ResourceMapper = Callable[[], Awaitable[ResourceContext]]
+
 
 def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT() -> ResourceMapper:
     async def view_args() -> ResourceContext:

@@ -1,15 +1,6 @@
 from dataclasses import dataclass
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Optional,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast, overload
 
 from aserto.client import AuthorizerOptions
 from aserto.client.authorizer import AuthorizerClient
@@ -28,11 +19,13 @@ from ._defaults import (
 
 __all__ = ["AsertoMiddleware", "AuthorizationError"]
 
-Handler = TypeVar("Handler")
+
 if TYPE_CHECKING:
     from flask import T_route
 
     Handler = T_route
+else:
+    Handler = Any
 
 
 @dataclass(frozen=True)
