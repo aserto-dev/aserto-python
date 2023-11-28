@@ -64,7 +64,7 @@ class Topaz:
     def wait_for_ready(self) -> None:
         t0 = datetime.now()
         while not os.path.exists(self.directory_grpc.ca_cert_path):
-            if t0 + timedelta(minutes=1) > datetime.now():
+            if t0 + timedelta(minutes=2) < datetime.now():
                 raise TimeoutError
             time.sleep(1)
         channel = connect(self.directory_grpc)

@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - v*
+    # Publish `v1.2.3` tags as releases.
+    tags:
+      - v*
+  # Run tests for PRs
+  pull_request:
+
+env:
+  VAULT_ADDR: https://vault.eng.aserto.com/
+
+
+jobs:
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read Configuration
+        uses: hashicorp/vault-action@v2.7.3
+        id: vault
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          token: ${{ secrets.VAULT_TOKEN }}
+          secrets: |
+            kv/data/github "SSH_PRIVATE_KEY" | SSH_PRIVATE_KEY;
+
+      - name: Setup git
+        run: |
+          mkdir -p $HOME/.ssh
+          umask 0077 && echo -e "${SSH_PRIVATE_KEY}" > $HOME/.ssh/id_rsa
+          ssh-keyscan github.com >> $HOME/.ssh/known_hosts
+          git config --global url."git@github.com:".insteadOf https://github.com/
+
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install topaz
+        run: brew tap aserto-dev/tap && brew install aserto-dev/tap/topaz && topaz install
+
+      - name: Use python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.2.1
+
+      - name: Lint & test aserto package
+        run: |
+          cd packages/aserto
+          poetry install
+          poetry run pyright .
+          poetry run pytest -vv
+          cd ../..
+
+      - name: Lint & test aserto-idp package
+        run : |
+          cd packages/aserto-idp
+          poetry install
+          poetry run pyright .
+          poetry run pytest -vv
+          cd ../..
+
+      - name: Lint & test flask-aserto package
+        run : |
+          cd packages/flask-aserto
+          poetry install
+          poetry run pyright .
+          poetry run pytest -vv
+          cd ../..
