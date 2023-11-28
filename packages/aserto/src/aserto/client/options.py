@@ -1,17 +1,10 @@
 import ssl
 from typing import Mapping, Optional
 
-from typing_extensions import Literal
-
-from ._typing import assert_unreachable
-
 __all__ = ["AuthorizerOptions"]
 
 
-ASERTO_HOSTED_AUTHORIZER_URL = "https://authorizer.prod.aserto.com"
-
-
-ServiceType = Literal["gRPC", "REST"]
+ASERTO_HOSTED_AUTHORIZER_URL = "authorizer.prod.aserto.com:8443"
 
 
 class AuthorizerOptions:
@@ -22,21 +15,11 @@ class AuthorizerOptions:
         tenant_id: Optional[str] = None,
         api_key: Optional[str] = None,
         cert_file_path: Optional[str] = None,
-        service_type: ServiceType = "gRPC",
     ):
         self._tenant_id = tenant_id
         self._api_key = api_key
         self._cert_file_path = cert_file_path
-        self._service_type = service_type
-
-        if not url.endswith("aserto.com"):
-            self._url = url
-        elif service_type == "gRPC":
-            self._url = f"{url}:8443"
-        elif service_type == "REST":
-            self._url = url
-        else:
-            assert_unreachable(service_type)
+        self._url = url
 
     @property
     def url(self) -> str:
@@ -51,10 +34,6 @@ class AuthorizerOptions:
         return self._tenant_id
 
     @property
-    def service_type(self) -> ServiceType:
-        return self._service_type
-
-    @property
     def cert(self) -> Optional[bytes]:
         if self._cert_file_path is None:
             return None
@@ -64,7 +43,11 @@ class AuthorizerOptions:
 
     @property
     def ssl_context(self) -> Optional[ssl.SSLContext]:
-        return ssl.create_default_context(cafile=self._cert_file_path) if self._cert_file_path else None
+        return (
+            ssl.create_default_context(cafile=self._cert_file_path)
+            if self._cert_file_path
+            else None
+        )
 
     @property
     def auth_headers(self) -> Mapping[str, str]:

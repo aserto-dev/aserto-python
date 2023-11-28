@@ -1,9 +1,10 @@
-from .options import AuthorizerOptions
-from .identity import Identity
-from .resource_context import ResourceContext
+from aserto.client.identity import Identity, IdentityType
+from aserto.client.options import AuthorizerOptions
+from aserto.client.resource_context import ResourceContext
 
 __all__ = [
     "AuthorizerOptions",
     "Identity",
+    "IdentityType",
     "ResourceContext",
 ]

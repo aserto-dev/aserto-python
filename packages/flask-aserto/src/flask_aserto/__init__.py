@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar, Union, cast, overload
 
-from aserto.client import AuthorizerOptions, Identity, ResourceContext
+from aserto.client import AuthorizerOptions, Identity, IdentityType, ResourceContext
 from aserto.client.authorizer import AuthorizerClient
 from flask import Flask, jsonify
 from flask.wrappers import Response
@@ -11,13 +11,13 @@ from ._defaults import (
     DEFAULT_DISPLAY_STATE_MAP_ENDPOINT,
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP,
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT,
-    create_default_policy_path_resolver,
     IdentityMapper,
+    ResourceMapper,
     StringMapper,
-    ResourceMapper
+    create_default_policy_path_resolver,
 )
 
-__all__ = ["AsertoMiddleware", "AuthorizationError"]
+Handler = TypeVar("Handler", bound=Callable[..., Any])
 
 
 @dataclass(frozen=True)
@@ -26,8 +26,6 @@ class AuthorizationError(Exception):
     policy_path: str
 
 
-Handler = TypeVar("Handler", bound=Callable[..., Union[Response, Response]])
-
 class AsertoMiddleware:
     def __init__(
         self,
@@ -35,8 +33,8 @@ class AsertoMiddleware:
         authorizer_options: AuthorizerOptions,
         policy_path_root: str,
         identity_provider: IdentityMapper,
-        policy_instance_name: Optional[str]= None,
-        policy_instance_label: Optional[str]= None,
+        policy_instance_name: Optional[str] = None,
+        policy_instance_label: Optional[str] = None,
         policy_path_resolver: Optional[StringMapper] = None,
         resource_context_provider: Optional[ResourceMapper] = None,
     ):
@@ -75,7 +73,9 @@ class AsertoMiddleware:
                 policy_path_root=kwargs.get("policy_path_root", self._policy_path_root),
                 identity_provider=kwargs.get("identity_provider", self._identity_provider),
                 policy_instance_name=kwargs.get("policy_instance_name", self._policy_instance_name),
-                policy_instance_label=kwargs.get("policy_instance_label", self._policy_instance_label),
+                policy_instance_label=kwargs.get(
+                    "policy_instance_label", self._policy_instance_label
+                ),
                 policy_path_resolver=kwargs.get("policy_path_resolver", self._policy_path_resolver),
                 resource_context_provider=kwargs.get(
                     "resource_context_provider", self._resource_context_provider
@@ -109,7 +109,7 @@ class AsertoMiddleware:
         client = self._generate_client()
         resource_context = self._resource_context_provider()
         policy_path = self._policy_path_resolver()
-        
+
         decisions = client.decisions(
             policy_path=policy_path,
             decisions=(decision,),
@@ -166,7 +166,7 @@ class AsertoMiddleware:
     def _authorize(self, handler: Handler) -> Handler:
         if self._policy_instance_name == None:
             raise TypeError(f"{self._policy_instance_name}() should not be None")
-        
+
         if self._policy_instance_label == None:
             self._policy_instance_label = self._policy_instance_name
 
@@ -185,7 +185,7 @@ class AsertoMiddleware:
             )
 
             if not decisions["allowed"]:
-                raise AuthorizationError(policy_instance_name=self._policy_instance_name, policy_path=policy_path) # type: ignore[arg-type]
+                raise AuthorizationError(policy_instance_name=self._policy_instance_name, policy_path=policy_path)  # type: ignore[arg-type]
 
             return handler(*args, **kwargs)
 
@@ -218,3 +218,18 @@ class AsertoMiddleware:
             return jsonify(display_state_map)
 
         return app
+
+
+__all__ = [
+    "AsertoMiddleware",
+    "AuthorizationError",
+    "AuthorizerClient",
+    "AuthorizerOptions",
+    "Handler",
+    "Identity",
+    "IdentityMapper",
+    "IdentityType",
+    "ResourceContext",
+    "ResourceMapper",
+    "StringMapper",
+]

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aserto-idp"
-version = "0.3.0"
+version = "0.3.1"
 description = "Common identity providers for use with Aserto client libraries"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
@@ -20,6 +20,7 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Software Development :: Libraries",
   "Typing :: Typed",
 ]
@@ -28,63 +29,23 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-aiohttp = "^3.8.1"
 python = "^3.8"
+aiohttp = "^3.8.0"
 python-jose = {version = "^3.3.0", extras = ["cryptography"]}
-typing-extensions = "^4.8.0"
 
 [tool.poetry.dev-dependencies]
-black = "21.7b0"
-isort= "^5.9.3"
-mypy = "^0.910"
-pytest-asyncio = "^0.15.1"
+black = "^23.0"
+isort= "^5.9.0"
+pytest-asyncio = "^0.15.0"
+pyright = "^1.1.0"
 pytest-cov = "^3.0.0"
 
 [tool.black]
 line-length = 100
-target-version = ["py37"]
+target-version = ["py38"]
 
 [tool.isort]
 profile = "black"
-
-[tool.mypy]
-show_error_codes = true
-check_untyped_defs = true
-disallow_any_decorated = true
-disallow_any_explicit = true
-disallow_any_expr = true
-disallow_any_generics = true
-disallow_any_unimported = true
-disallow_incomplete_defs = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-disallow_untyped_defs = true
-implicit_reexport = false
-no_implicit_optional = true
-strict_equality = true
-strict_optional = true
-warn_no_return = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_ignores = true
-
-[[tool.mypy.overrides]]
-module = ["jose"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-# jose generates too many `Any` types
-module = ["aserto_idp.auth0", "aserto_idp.oidc.*"]
-disallow_any_expr = false
-
-[[tool.mypy.overrides]]
-# lru_cache swallows typing info
-module = ["aserto_idp.oidc.discovery"]
-warn_return_any = false
-disallow_untyped_decorators = false
-disallow_any_decorated = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

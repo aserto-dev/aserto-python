@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aserto"
-version = "0.21.1"
+version = "0.30.1"
 description = "Aserto API client"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
@@ -28,53 +28,27 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-aiohttp = "^3.8.1"
 python = "^3.8"
-typing-extensions = "^4.8.0"
-grpcio = "^1.49.1"
-protobuf = "^4.21.7"
-aserto-authorizer = {path = "../../../python-authorizer", develop = true}
-aserto-directory = {path = "../../../python-directory", develop = true}
+aiohttp = "^3.8.0"
+grpcio = "^1.49.0"
+protobuf = "^4.21.0"
+aserto-authorizer = "^0.20.2"
+aserto-directory = "^0.30.0"
 
 [tool.poetry.dev-dependencies]
-black = "21.7b0"
-isort= "^5.9.3"
-mypy = "^0.910"
-pytest-asyncio = "^0.15.1"
+black = "^23.0"
+isort= "^5.9.0"
+pytest-asyncio = "^0.15.0"
+pyright = "^1.1.0"
+requests = "^2.31.0"
 
 [tool.black]
 line-length = 100
-target-version = ["py37"]
+target-version = ["py38"]
 
 [tool.isort]
 profile = "black"
 
-[tool.mypy]
-show_error_codes = true
-check_untyped_defs = true
-disallow_any_decorated = true
-disallow_any_explicit = true
-disallow_any_expr = true
-disallow_any_generics = true
-disallow_any_unimported = true
-disallow_incomplete_defs = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-disallow_untyped_defs = true
-implicit_reexport = false
-no_implicit_optional = true
-strict_equality = true
-strict_optional = true
-warn_no_return = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_ignores = true
-
-[[tool.mypy.overrides]]
-module = "test.mock"
-disallow_any_expr = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
