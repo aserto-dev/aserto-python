@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "flask-aserto"
-version = "0.20.1"
+version = "0.30.0"
 description = "Aserto integration for Flask"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
@@ -33,14 +33,13 @@ Flask = {version = ">=2.0.0,<4.0.0", extras = ["async"]}
 Flask-Cors = ">=3.0.0,<5.0.0"
 grpcio = "^1.49.0"
 protobuf = "^4.21.0"
-aserto = {path = "../aserto", develop = true}
+aserto = "0.30.0.rc2"
 
 [tool.poetry.dev-dependencies]
 black = "^23.0"
 isort= "^5.9.0"
 pyright = "^1.1.0"
 pytest = "^7.4.0"
-aserto-idp = {path = "../aserto-idp", develop = true}
 
 [tool.black]
 line-length = 100

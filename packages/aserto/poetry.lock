@@ -34,16 +34,11 @@ version = "0.20.2"
 description = "gRPC client for Aserto Authorizer service instances"
 category = "main"
 optional = false
-python-versions = "^3.8"
-develop = true
+python-versions = ">=3.8,<4.0"
 
 [package.dependencies]
-grpcio = ">=1.58.0"
-typing-extensions = ">=3.10.0"
-
-[package.source]
-type = "directory"
-url = "../../../python-authorizer"
+grpcio = ">=1.49,<2.0"
+protobuf = ">=4.21.0,<5.0.0"
 
 [[package]]
 name = "aserto-directory"
@@ -51,18 +46,12 @@ version = "0.30.0"
 description = "gRPC client for Aserto Directory service instances"
 category = "main"
 optional = false
-python-versions = ">=3.8"
-develop = true
+python-versions = ">=3.8,<4"
 
 [package.dependencies]
-grpcio = "^1.49.0"
-protobuf = "^4.21.0"
-protovalidate = {version = "^0.3.0", markers = "python_version >= \"3.11\""}
-typing-extensions = ">=3.10.0"
-
-[package.source]
-type = "directory"
-url = "../../../python-directory"
+grpcio = ">=1.49,<2.0"
+protobuf = ">=4.21.0,<5.0.0"
+protovalidate = {version = ">=0.3.0,<0.4.0", markers = "python_version >= \"3.11\""}
 
 [[package]]
 name = "async-timeout"
@@ -443,7 +432,7 @@ python-versions = ">=3.7"
 name = "typing-extensions"
 version = "4.8.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.8"
 
@@ -475,7 +464,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "45d362477d5bcbaf102c116ee6477c43ca3bc3a94f03b929014b5aa24b879d1f"
+content-hash = "079bf6924a1d31ef230e96ebcdd63bb0b8c179f1d5ce0a06a845e8291527e649"
 
 [metadata.files]
 aiohttp = []

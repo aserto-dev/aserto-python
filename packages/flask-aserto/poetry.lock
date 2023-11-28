@@ -30,77 +30,43 @@ frozenlist = ">=1.1.0"
 
 [[package]]
 name = "aserto"
-version = "0.21.1"
+version = "0.30.0rc2"
 description = "Aserto API client"
 category = "main"
 optional = false
-python-versions = "^3.8"
-develop = true
+python-versions = ">=3.8,<4.0"
 
 [package.dependencies]
-aiohttp = "^3.8.0"
-aserto-authorizer = {path = "../../../python-authorizer", develop = true}
-aserto-directory = {path = "../../../python-directory", develop = true}
-grpcio = "^1.49.0"
-protobuf = "^4.21.0"
-
-[package.source]
-type = "directory"
-url = "../aserto"
+aiohttp = ">=3.8.0,<4.0.0"
+aserto-authorizer = "0.20.2.rc1"
+aserto-directory = "0.30.0.rc1"
+grpcio = ">=1.49.0,<2.0.0"
+protobuf = ">=4.21.0,<5.0.0"
 
 [[package]]
 name = "aserto-authorizer"
-version = "0.20.2"
+version = "0.20.2rc1"
 description = "gRPC client for Aserto Authorizer service instances"
 category = "main"
 optional = false
-python-versions = "^3.8"
-develop = true
+python-versions = ">=3.8,<4.0"
 
 [package.dependencies]
-grpcio = ">=1.58.0"
-typing-extensions = ">=3.10.0"
-
-[package.source]
-type = "directory"
-url = "../../../python-authorizer"
+grpcio = ">=1.49,<2.0"
+protobuf = ">=4.21.0,<5.0.0"
 
 [[package]]
 name = "aserto-directory"
-version = "0.30.0"
+version = "0.30.0rc1"
 description = "gRPC client for Aserto Directory service instances"
 category = "main"
 optional = false
-python-versions = ">=3.8"
-develop = true
+python-versions = ">=3.8,<4"
 
 [package.dependencies]
-grpcio = "^1.49.0"
-protobuf = "^4.21.0"
-protovalidate = {version = "^0.3.0", markers = "python_version >= \"3.11\""}
-typing-extensions = ">=3.10.0"
-
-[package.source]
-type = "directory"
-url = "../../../python-directory"
-
-[[package]]
-name = "aserto-idp"
-version = "0.3.0"
-description = "Common identity providers for use with Aserto client libraries"
-category = "dev"
-optional = false
-python-versions = "^3.8"
-develop = true
-
-[package.dependencies]
-aiohttp = "^3.8.1"
-python-jose = {version = "^3.3.0", extras = ["cryptography"]}
-typing-extensions = "^4.8.0"
-
-[package.source]
-type = "directory"
-url = "../aserto-idp"
+grpcio = ">=1.49,<2.0"
+protobuf = ">=4.21.0,<5.0.0"
+protovalidate = {version = ">=0.3.0,<0.4.0", markers = "python_version >= \"3.11\""}
 
 [[package]]
 name = "asgiref"
@@ -207,17 +173,6 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
-name = "cffi"
-version = "1.16.0"
-description = "Foreign Function Interface for Python calling C code."
-category = "dev"
-optional = false
-python-versions = ">=3.8"
-
-[package.dependencies]
-pycparser = "*"
-
-[[package]]
 name = "charset-normalizer"
 version = "3.3.2"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
@@ -243,42 +198,6 @@ description = "Cross-platform colored terminal text."
 category = "main"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
-
-[[package]]
-name = "cryptography"
-version = "41.0.6"
-description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
-[package.dependencies]
-cffi = ">=1.12"
-
-[package.extras]
-docs = ["sphinx (>=5.3.0)", "sphinx-rtd-theme (>=1.1.1)"]
-docstest = ["pyenchant (>=1.6.11)", "twine (>=1.12.0)", "sphinxcontrib-spelling (>=4.0.1)"]
-nox = ["nox"]
-pep8test = ["black", "ruff", "mypy", "check-sdist"]
-sdist = ["build"]
-ssh = ["bcrypt (>=3.1.5)"]
-test = ["pytest (>=6.2.0)", "pytest-benchmark", "pytest-cov", "pytest-xdist", "pretend"]
-test-randomorder = ["pytest-randomly"]
-
-[[package]]
-name = "ecdsa"
-version = "0.18.0"
-description = "ECDSA cryptographic signature library (pure python)"
-category = "dev"
-optional = false
-python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
-
-[package.dependencies]
-six = ">=1.9.0"
-
-[package.extras]
-gmpy = ["gmpy"]
-gmpy2 = ["gmpy2"]
 
 [[package]]
 name = "exceptiongroup"
@@ -524,22 +443,6 @@ cel-python = "*"
 protobuf = "*"
 
 [[package]]
-name = "pyasn1"
-version = "0.5.1"
-description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
-category = "dev"
-optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
-
-[[package]]
-name = "pycparser"
-version = "2.21"
-description = "C parser in Python"
-category = "dev"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-
-[[package]]
 name = "pyright"
 version = "1.1.337"
 description = "Command line wrapper for pyright"
@@ -585,25 +488,6 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 six = ">=1.5"
 
 [[package]]
-name = "python-jose"
-version = "3.3.0"
-description = "JOSE implementation in Python"
-category = "dev"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-cryptography = {version = ">=3.4.0", optional = true, markers = "extra == \"cryptography\""}
-ecdsa = "!=0.15"
-pyasn1 = "*"
-rsa = "*"
-
-[package.extras]
-cryptography = ["cryptography (>=3.4.0)"]
-pycrypto = ["pycrypto (>=2.6.0,<2.7.0)", "pyasn1"]
-pycryptodome = ["pycryptodome (>=3.3.1,<4.0.0)", "pyasn1"]
-
-[[package]]
 name = "pyyaml"
 version = "6.0.1"
 description = "YAML parser and emitter for Python"
@@ -628,17 +512,6 @@ urllib3 = ">=1.21.1,<3"
 [package.extras]
 socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use_chardet_on_py3 = ["chardet (>=3.0.2,<6)"]
-
-[[package]]
-name = "rsa"
-version = "4.9"
-description = "Pure-Python RSA implementation"
-category = "dev"
-optional = false
-python-versions = ">=3.6,<4"
-
-[package.dependencies]
-pyasn1 = ">=0.1.3"
 
 [[package]]
 name = "six"
@@ -718,7 +591,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-ena
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "fd45aa0ee51c5f92abd31061532de1d897d3defcb13fbf6dcc5efd7b1c574ff1"
+content-hash = "bd7bb1a94a51063be96bc749d22b88320a0697a108f4a2707861859cd94ef48a"
 
 [metadata.files]
 aiohttp = []
@@ -726,7 +599,6 @@ aiosignal = []
 aserto = []
 aserto-authorizer = []
 aserto-directory = []
-aserto-idp = []
 asgiref = []
 async-timeout = []
 attrs = []
@@ -735,12 +607,9 @@ black = []
 blinker = []
 cel-python = []
 certifi = []
-cffi = []
 charset-normalizer = []
 click = []
 colorama = []
-cryptography = []
-ecdsa = []
 exceptiongroup = []
 flask = []
 flask-cors = []
@@ -764,15 +633,11 @@ platformdirs = []
 pluggy = []
 protobuf = []
 protovalidate = []
-pyasn1 = []
-pycparser = []
 pyright = []
 pytest = []
 python-dateutil = []
-python-jose = []
 pyyaml = []
 requests = []
-rsa = []
 six = []
 tomli = []
 typing-extensions = []

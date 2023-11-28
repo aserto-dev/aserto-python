@@ -1,46 +1,23 @@
 from typing import List, Literal, Optional, Sequence, Union, overload
 
+import aserto.directory.common.v2 as common
+import aserto.directory.exporter.v2 as exporter
+import aserto.directory.importer.v2 as importer
+import aserto.directory.reader.v2 as reader
+import aserto.directory.writer.v2 as writer
 import grpc.aio as grpc
-from aserto.directory.common.v2 import Object
-from aserto.directory.common.v2 import ObjectIdentifier as ObjectIdentifierProto
-from aserto.directory.common.v2 import (
-    ObjectTypeIdentifier,
-    PaginationRequest,
-    PermissionIdentifier,
-    Relation,
-    RelationIdentifier,
-    RelationTypeIdentifier,
-)
-from aserto.directory.exporter.v2 import ExporterStub
-from aserto.directory.importer.v2 import ImporterStub
+from aserto.directory.common.v2 import Object, PaginationRequest, Relation
 from aserto.directory.reader.v2 import (
-    CheckPermissionRequest,
-    CheckRelationRequest,
-    GetObjectManyRequest,
-    GetObjectRequest,
     GetObjectResponse,
-    GetObjectsRequest,
     GetObjectsResponse,
-    GetRelationRequest,
-    GetRelationsRequest,
     GetRelationsResponse,
-    ReaderStub,
-)
-from aserto.directory.writer.v2 import (
-    DeleteObjectRequest,
-    DeleteRelationRequest,
-    SetObjectRequest,
-    SetRelationRequest,
-    WriterStub,
 )
 from grpc import RpcError, StatusCode
 
-from aserto.client.directory import NotFoundError, channel_credentials, get_metadata
-from aserto.client.directory.v2.helpers import (
-    ObjectIdentifier,
-    RelationResponse,
-    relation_objects,
-)
+import aserto.client.directory as directory
+import aserto.client.directory.v2.helpers as helpers
+from aserto.client.directory import NotFoundError
+from aserto.client.directory.v2.helpers import ObjectIdentifier, RelationResponse
 
 
 class Directory:
@@ -53,13 +30,13 @@ class Directory:
         ca_cert_path: str = "",
     ) -> None:
         self._channel = grpc.secure_channel(
-            target=address, credentials=channel_credentials(cert=ca_cert_path)
+            target=address, credentials=directory.channel_credentials(cert=ca_cert_path)
         )
-        self._metadata = get_metadata(api_key=api_key, tenant_id=tenant_id)
-        self.reader = ReaderStub(self._channel)
-        self.writer = WriterStub(self._channel)
-        self.importer = ImporterStub(self._channel)
-        self.exporter = ExporterStub(self._channel)
+        self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
+        self.reader = reader.ReaderStub(self._channel)
+        self.writer = writer.WriterStub(self._channel)
+        self.importer = importer.ImporterStub(self._channel)
+        self.exporter = exporter.ExporterStub(self._channel)
 
     @overload
     async def get_object(
@@ -109,8 +86,8 @@ class Directory:
 
         try:
             response = await self.reader.GetObject(
-                GetObjectRequest(
-                    param=ObjectIdentifierProto(type=object_type, key=object_key),
+                reader.GetObjectRequest(
+                    param=common.ObjectIdentifier(type=object_type, key=object_key),
                     with_relations=with_relations,
                     page=page,
                 ),
@@ -147,7 +124,9 @@ class Directory:
                 the next page's token if there are more results
         """
         response = await self.reader.GetObjects(
-            GetObjectsRequest(param=ObjectTypeIdentifier(name=object_type), page=page),
+            reader.GetObjectsRequest(
+                param=common.ObjectTypeIdentifier(name=object_type), page=page
+            ),
             metadata=self._metadata,
         )
         return response
@@ -172,7 +151,8 @@ class Directory:
 
         try:
             response = await self.reader.GetObjectMany(
-                GetObjectManyRequest(param=(i.proto for i in identifiers)), metadata=self._metadata
+                reader.GetObjectManyRequest(param=(i.proto for i in identifiers)),
+                metadata=self._metadata,
             )
         except RpcError as err:
             if err.code() == StatusCode.NOT_FOUND:  # type: ignore
@@ -195,7 +175,7 @@ class Directory:
         """
 
         response = await self.writer.SetObject(
-            SetObjectRequest(object=object), metadata=self._metadata
+            writer.SetObjectRequest(object=object), metadata=self._metadata
         )
         return response.result
 
@@ -219,8 +199,8 @@ class Directory:
         """
 
         await self.writer.DeleteObject(
-            DeleteObjectRequest(
-                param=ObjectIdentifierProto(type=object_type, key=object_key),
+            writer.DeleteObjectRequest(
+                param=common.ObjectIdentifier(type=object_type, key=object_key),
                 with_relations=with_relations,
             ),
             metadata=self._metadata,
@@ -266,11 +246,11 @@ class Directory:
         """
 
         return await self.reader.GetRelations(
-            GetRelationsRequest(
-                param=RelationIdentifier(
-                    object=ObjectIdentifierProto(type=object_type, key=object_key),
-                    subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
-                    relation=RelationTypeIdentifier(name=relation, object_type=object_type),
+            reader.GetRelationsRequest(
+                param=common.RelationIdentifier(
+                    object=common.ObjectIdentifier(type=object_type, key=object_key),
+                    subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
+                    relation=common.RelationTypeIdentifier(name=relation, object_type=object_type),
                 ),
                 page=page,
             ),
@@ -340,11 +320,13 @@ class Directory:
 
         try:
             response = await self.reader.GetRelation(
-                GetRelationRequest(
-                    param=RelationIdentifier(
-                        object=ObjectIdentifierProto(type=object_type, key=object_key),
-                        subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
-                        relation=RelationTypeIdentifier(name=relation, object_type=object_type),
+                reader.GetRelationRequest(
+                    param=common.RelationIdentifier(
+                        object=common.ObjectIdentifier(type=object_type, key=object_key),
+                        subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
+                        relation=common.RelationTypeIdentifier(
+                            name=relation, object_type=object_type
+                        ),
                     ),
                     with_objects=with_objects,
                 ),
@@ -354,7 +336,7 @@ class Directory:
                 return response.results[0]
 
             rel = response.results[0]
-            objects = relation_objects(response.objects)
+            objects = helpers.relation_objects(response.objects)
             return RelationResponse(
                 relation=rel,
                 object=objects[ObjectIdentifier(rel.object.type, rel.object.key)],
@@ -390,11 +372,11 @@ class Directory:
         """
 
         response = await self.writer.SetRelation(
-            SetRelationRequest(
+            writer.SetRelationRequest(
                 relation=Relation(
-                    object=ObjectIdentifierProto(type=object_type, key=object_key),
+                    object=common.ObjectIdentifier(type=object_type, key=object_key),
                     relation=relation,
-                    subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
+                    subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
                 )
             ),
             metadata=self._metadata,
@@ -429,13 +411,13 @@ class Directory:
         None
         """
 
-        relation_identifier = RelationIdentifier(
-            object=ObjectIdentifierProto(type=object_type, key=object_key),
-            subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
-            relation=RelationTypeIdentifier(name=relation, object_type=object_type),
+        relation_identifier = common.RelationIdentifier(
+            object=common.ObjectIdentifier(type=object_type, key=object_key),
+            subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
+            relation=common.RelationTypeIdentifier(name=relation, object_type=object_type),
         )
         await self.writer.DeleteRelation(
-            DeleteRelationRequest(param=relation_identifier), metadata=self._metadata
+            writer.DeleteRelationRequest(param=relation_identifier), metadata=self._metadata
         )
 
     async def check_relation(
@@ -467,10 +449,10 @@ class Directory:
         """
 
         response = await self.reader.CheckRelation(
-            CheckRelationRequest(
-                object=ObjectIdentifierProto(type=object_type, key=object_key),
-                relation=RelationTypeIdentifier(name=relation, object_type=object_type),
-                subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
+            reader.CheckRelationRequest(
+                object=common.ObjectIdentifier(type=object_type, key=object_key),
+                relation=common.RelationTypeIdentifier(name=relation, object_type=object_type),
+                subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
             ),
             metadata=self._metadata,
         )
@@ -505,10 +487,10 @@ class Directory:
         """
 
         response = await self.reader.CheckPermission(
-            CheckPermissionRequest(
-                object=ObjectIdentifierProto(type=object_type, key=object_key),
-                subject=ObjectIdentifierProto(type=subject_type, key=subject_key),
-                permission=PermissionIdentifier(name=permission),
+            reader.CheckPermissionRequest(
+                object=common.ObjectIdentifier(type=object_type, key=object_key),
+                subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
+                permission=common.PermissionIdentifier(name=permission),
             ),
             metadata=self._metadata,
         )
@@ -524,3 +506,17 @@ class Directory:
 
     async def __aexit__(self, type, value, traceback):
         await self.close()
+
+
+__all__ = [
+    "Directory",
+    "GetObjectResponse",
+    "GetObjectsResponse",
+    "GetRelationsResponse",
+    "NotFoundError",
+    "Object",
+    "ObjectIdentifier",
+    "PaginationRequest",
+    "Relation",
+    "RelationResponse",
+]

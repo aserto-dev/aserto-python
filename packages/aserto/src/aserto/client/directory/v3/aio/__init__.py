@@ -788,3 +788,23 @@ class Directory:
         """Closes the gRPC channel"""
 
         await self._channel.close()
+
+
+__all__ = [
+    "Directory",
+    "GetObjectResponse",
+    "GetObjectsResponse",
+    "Object",
+    "NotFoundError",
+    "PaginationRequest",
+    "Relation",
+    "Struct",
+    "ETagMismatchError",
+    "ExportOption",
+    "ImportCounter",
+    "ImportResponse",
+    "Manifest",
+    "ObjectIdentifier",
+    "RelationResponse",
+    "RelationsResponse",
+]

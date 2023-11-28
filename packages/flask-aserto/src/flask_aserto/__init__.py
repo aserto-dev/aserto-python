@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast, overload
+from typing import Any, Callable, Optional, TypeVar, Union, cast, overload
 
-from aserto.client import AuthorizerOptions
+from aserto.client import AuthorizerOptions, Identity, IdentityType, ResourceContext
 from aserto.client.authorizer import AuthorizerClient
 from flask import Flask, jsonify
 from flask.wrappers import Response
@@ -17,15 +17,7 @@ from ._defaults import (
     create_default_policy_path_resolver,
 )
 
-__all__ = ["AsertoMiddleware", "AuthorizationError"]
-
-
-if TYPE_CHECKING:
-    from flask import T_route
-
-    Handler = T_route
-else:
-    Handler = Any
+Handler = TypeVar("Handler", bound=Callable[..., Any])
 
 
 @dataclass(frozen=True)
@@ -226,3 +218,18 @@ class AsertoMiddleware:
             return jsonify(display_state_map)
 
         return app
+
+
+__all__ = [
+    "AsertoMiddleware",
+    "AuthorizationError",
+    "AuthorizerClient",
+    "AuthorizerOptions",
+    "Handler",
+    "Identity",
+    "IdentityMapper",
+    "IdentityType",
+    "ResourceContext",
+    "ResourceMapper",
+    "StringMapper",
+]

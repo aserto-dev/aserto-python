@@ -13,12 +13,11 @@ from ._defaults import (
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP,
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT,
     IdentityMapper,
+    IdentityType,
     ResourceMapper,
     StringMapper,
     create_default_policy_path_resolver,
 )
-
-__all__ = ["AsertoMiddleware", "AuthorizationError"]
 
 
 @dataclass(frozen=True)
@@ -27,7 +26,7 @@ class AuthorizationError(Exception):
     policy_path: str
 
 
-Handler = Callable[..., Awaitable[Response]]
+Handler = TypeVar("Handler", bound=Callable[..., Awaitable[Any]])
 
 
 class AsertoMiddleware:
@@ -210,7 +209,9 @@ class AsertoMiddleware:
         async def __displaystatemap() -> Response:
             nonlocal resource_context_provider
             if resource_context_provider is None:
-                resource_context_provider = DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
+                resource_context_provider = (
+                    DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP()
+                )
 
             client, resource_context = await gather(
                 self._generate_client(),
@@ -228,3 +229,17 @@ class AsertoMiddleware:
             return jsonify(display_state_map)
 
         return app
+
+
+__all__ = [
+    "AsertoMiddleware",
+    "AuthorizationError",
+    "AuthorizerClient",
+    "AuthorizerOptions",
+    "Handler",
+    "Identity",
+    "IdentityMapper",
+    "IdentityType",
+    "ResourceMapper",
+    "StringMapper",
+]
