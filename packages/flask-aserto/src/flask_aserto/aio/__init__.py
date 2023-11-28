@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, cast, overload
 
-from aserto.client import AuthorizerOptions, Identity, ResourceContext
+from aserto.client import AuthorizerOptions, Identity, IdentityType, ResourceContext
 from aserto.client.authorizer.aio import AuthorizerClient
 from flask import Flask, jsonify
 from flask.wrappers import Response
@@ -13,7 +13,6 @@ from ._defaults import (
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_DISPLAY_STATE_MAP,
     DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT,
     IdentityMapper,
-    IdentityType,
     ResourceMapper,
     StringMapper,
     create_default_policy_path_resolver,
