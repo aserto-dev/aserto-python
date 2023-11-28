@@ -33,7 +33,7 @@ Flask = {version = ">=2.0.0,<4.0.0", extras = ["async"]}
 Flask-Cors = ">=3.0.0,<5.0.0"
 grpcio = "^1.49.0"
 protobuf = "^4.21.0"
-aserto = "0.30.0.rc2"
+aserto = "^0.30.1"
 
 [tool.poetry.dev-dependencies]
 black = "^23.0"

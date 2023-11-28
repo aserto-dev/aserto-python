@@ -30,7 +30,7 @@ frozenlist = ">=1.1.0"
 
 [[package]]
 name = "aserto"
-version = "0.30.0rc2"
+version = "0.30.1"
 description = "Aserto API client"
 category = "main"
 optional = false
@@ -38,14 +38,14 @@ python-versions = ">=3.8,<4.0"
 
 [package.dependencies]
 aiohttp = ">=3.8.0,<4.0.0"
-aserto-authorizer = "0.20.2.rc1"
-aserto-directory = "0.30.0.rc1"
+aserto-authorizer = ">=0.20.2,<0.21.0"
+aserto-directory = ">=0.30.0,<0.31.0"
 grpcio = ">=1.49.0,<2.0.0"
 protobuf = ">=4.21.0,<5.0.0"
 
 [[package]]
 name = "aserto-authorizer"
-version = "0.20.2rc1"
+version = "0.20.2"
 description = "gRPC client for Aserto Authorizer service instances"
 category = "main"
 optional = false
@@ -57,7 +57,7 @@ protobuf = ">=4.21.0,<5.0.0"
 
 [[package]]
 name = "aserto-directory"
-version = "0.30.0rc1"
+version = "0.30.0"
 description = "gRPC client for Aserto Directory service instances"
 category = "main"
 optional = false
@@ -591,7 +591,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-ena
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "bd7bb1a94a51063be96bc749d22b88320a0697a108f4a2707861859cd94ef48a"
+content-hash = "c14d278390ba11bb3cfba8cb91919fe82465ad9ab0f7d8440978c2d845b6f491"
 
 [metadata.files]
 aiohttp = []
