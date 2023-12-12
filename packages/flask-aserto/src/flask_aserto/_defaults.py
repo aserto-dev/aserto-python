@@ -1,10 +1,9 @@
 import re
 from dataclasses import dataclass
-from typing import Callable, TypeVar, Union
+from typing import Callable, TypeVar, Any
 
 from aserto.client import Identity, ResourceContext
 from flask import request
-from flask.wrappers import Response
 
 __all__ = [
     "create_default_policy_path_resolver",
@@ -30,7 +29,7 @@ class AuthorizationError(Exception):
     policy_path: str
 
 
-Handler = TypeVar("Handler", bound=Callable[..., Union[Response, Response]])
+Handler = TypeVar("Handler", bound=Callable[..., Any])
 
 
 def DEFAULT_RESOURCE_CONTEXT_PROVIDER_FOR_ENDPOINT() -> ResourceContext:

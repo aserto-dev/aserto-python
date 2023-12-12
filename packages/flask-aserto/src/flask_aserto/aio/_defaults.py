@@ -1,10 +1,9 @@
 import re
 from dataclasses import dataclass
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Any, TypeVar
 
 from aserto.client import Identity, ResourceContext
 from flask import request
-from flask.wrappers import Response
 
 __all__ = [
     "create_default_policy_path_resolver",
@@ -25,7 +24,7 @@ class AuthorizationError(Exception):
     policy_path: str
 
 
-Handler = Callable[..., Awaitable[Response]]
+Handler = TypeVar("Handler", bound=Callable[..., Awaitable[Any]])
 
 
 DEFAULT_DISPLAY_STATE_MAP_ENDPOINT = "/__displaystatemap"
