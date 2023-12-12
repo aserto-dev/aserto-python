@@ -200,7 +200,7 @@ class AsertoMiddleware:
         opts = CheckOptions(
             objId=objId, objType=objType,objIdMapper=objIdMapper,
             objMapper=objMapper, relationName=relationName, relationMapper=relationMapper,
-            subjTyp=subjType, subjMapper=subjMapper, policyPath=policyPath, policyPathMapper=policyPathMapper)
+            subjType=subjType, subjMapper=subjMapper, policyPath=policyPath, policyPathMapper=policyPathMapper)
         return CheckMiddleware(options=opts, aserto_middleware=self)
 
     def register_display_state_map(
