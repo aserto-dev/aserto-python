@@ -27,24 +27,72 @@ from aserto.client.directory.v3.helpers import (
     RelationsResponse,
 )
 
+def build_grpc_channel(address: str, default_address: str, ca_cert_path: str) -> typing.Any:
+    if address == "" and default_address == "":
+        return None
+        
+    if address == "":
+        return grpc.secure_channel(
+        target=default_address, credentials=directory.channel_credentials(cert=ca_cert_path)
+    )
+        
+    return grpc.secure_channel(
+        target=address, credentials=directory.channel_credentials(cert=ca_cert_path)
+    )
+
 
 class Directory:
     def __init__(
         self,
-        address: str,
         api_key: str = "",
         tenant_id: str = "",
         ca_cert_path: str = "",
+        address: str = "",
+        reader_address: str = "",
+        writer_address: str = "",
+        importer_address: str = "",
+        exporter_address: str = "",
+        model_address: str = "",
     ) -> None:
-        self._channel = grpc.secure_channel(
-            target=address, credentials=directory.channel_credentials(cert=ca_cert_path)
-        )
+        
+        validation_error = directory.validate_addresses(address=address, reader_address=reader_address, writer_address=writer_address,
+                              importer_address=importer_address, exporter_address=exporter_address, model_address=model_address)
+        if validation_error is not None:
+            raise validation_error
+        
+        self._reader_channel = build_grpc_channel(reader_address, address, ca_cert_path)
+        self._writer_channel = build_grpc_channel(writer_address, address, ca_cert_path)
+        self._importer_channel = build_grpc_channel(importer_address, address, ca_cert_path)
+        self._exporter_channel = build_grpc_channel(exporter_address, address, ca_cert_path)
+        self._model_channel = build_grpc_channel(model_address, address, ca_cert_path)
+
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
-        self.reader = reader.ReaderStub(self._channel)
-        self.writer = writer.WriterStub(self._channel)
-        self.model = model.ModelStub(self._channel)
-        self.importer = importer.ImporterStub(self._channel)
-        self.exporter = exporter.ExporterStub(self._channel)
+
+        self.reader = (
+            reader.ReaderStub(self._reader_channel)
+            if self._reader_channel is not None
+            else None
+        )
+        self.writer = (
+            writer.WriterStub(self._writer_channel)
+            if self._writer_channel is not None
+            else None
+        )
+        self.model = (
+            model.ModelStub(self._model_channel)
+            if self._model_channel is not None
+            else None
+        )
+        self.importer = (
+            importer.ImporterStub(self._importer_channel)
+            if self._importer_channel is not None
+            else None
+        )
+        self.exporter = (
+            exporter.ExporterStub(self._exporter_channel)
+            if self._exporter_channel is not None
+            else None
+        )
 
     async def get_objects(
         self, object_type: str = "", page: typing.Optional[PaginationRequest] = None
@@ -66,6 +114,9 @@ class Directory:
             page : PaginationResponse
                 the next page's token if there are more results
         """
+
+        if self.reader is None:
+            raise directory.NilClient
 
         response = await self.reader.GetObjects(
             reader.GetObjectsRequest(object_type=object_type, page=page),
@@ -90,6 +141,9 @@ class Directory:
         list
             list of directory objects
         """
+
+        if self.reader is None:
+            raise directory.NilClient
 
         try:
             response = await self.reader.GetObjectMany(
@@ -147,6 +201,9 @@ class Directory:
         ----
         a directory object or, if with_relations is True, a GetObjectResponse.
         """
+
+        if self.reader is None:
+            raise directory.NilClient
 
         try:
             response = await self.reader.GetObject(
@@ -228,6 +285,10 @@ class Directory:
         properties: typing.Optional[typing.Union[typing.Mapping[str, typing.Any], Struct]] = None,
         etag: str = "",
     ) -> Object:
+        
+        if self.writer is None:
+            raise directory.NilClient
+
         obj = object
         if obj is None:
             props = (
@@ -272,6 +333,9 @@ class Directory:
         ----
         None
         """
+
+        if self.writer is None:
+            raise directory.NilClient
 
         await self.writer.DeleteObject(
             writer.DeleteObjectRequest(
@@ -322,6 +386,9 @@ class Directory:
             page : PaginationResponse(result_size: int, next_token: str)
                 retrieved page information — the size of the page, and the next page's token
         """
+
+        if self.reader is None:
+            raise directory.NilClient
 
         response = await self.reader.GetRelations(
             reader.GetRelationsRequest(
@@ -407,6 +474,9 @@ class Directory:
             a RelationResponse if with_objects is set to True
         """
 
+        if self.reader is None:
+            raise directory.NilClient
+
         try:
             response = await self.reader.GetRelation(
                 reader.GetRelationRequest(
@@ -468,6 +538,9 @@ class Directory:
         The created relation
         """
 
+        if self.writer is None:
+            raise directory.NilClient
+
         response = await self.writer.SetRelation(
             writer.SetRelationRequest(
                 relation=Relation(
@@ -514,6 +587,9 @@ class Directory:
         None
         """
 
+        if self.writer is None:
+            raise directory.NilClient
+
         await self.writer.DeleteRelation(
             writer.DeleteRelationRequest(
                 object_type=object_type,
@@ -554,6 +630,10 @@ class Directory:
         ----
         True or False
         """
+
+        if self.reader is None:
+            raise directory.NilClient
+
         response = await self.reader.Check(
             reader.CheckRequest(
                 object_type=object_type,
@@ -593,6 +673,9 @@ class Directory:
         ----
         True or False
         """
+
+        if self.reader is None:
+            raise directory.NilClient
 
         response = await self.reader.CheckRelation(
             reader.CheckRelationRequest(
@@ -634,6 +717,9 @@ class Directory:
         True or False
         """
 
+        if self.reader is None:
+            raise directory.NilClient
+
         response = await self.reader.CheckPermission(
             reader.CheckPermissionRequest(
                 object_type=object_type,
@@ -667,6 +753,10 @@ class Directory:
         ----
         The current manifest or None.
         """
+
+        if self.model is None:
+            raise directory.NilClient
+
         headers = self._metadata
         if etag:
             headers += (("if-none-match", etag),)
@@ -699,6 +789,9 @@ class Directory:
         ----
         None
         """
+
+        if self.model is None:
+            raise directory.NilClient
 
         headers = self._metadata
         if etag:
@@ -733,6 +826,9 @@ class Directory:
         ImportResponse:
             a summary of the total number of object and relations imported.
         """
+
+        if self.importer is None:
+            raise directory.NilClient
 
         async def _import_iter() -> typing.AsyncIterator[importer.ImportRequest]:
             async for item in data:
@@ -773,6 +869,9 @@ class Directory:
         start_from: typing.Optional[datetime.datetime]
             if provided, only objects and relations that have been modified after this date are exported.
         """
+        if self.exporter is None:
+            raise directory.NilClient
+        
         req = exporter.ExportRequest(options=options)
         if start_from is not None:
             req.start_from.FromDatetime(dt=start_from)
@@ -786,8 +885,20 @@ class Directory:
 
     async def close(self) -> None:
         """Closes the gRPC channel"""
+        if self._reader_channel is not None:
+            await self._reader_channel.close()
 
-        await self._channel.close()
+        if self._writer_channel is not None:
+           await self._writer_channel.close()
+
+        if self._importer_channel is not None:
+           await self._importer_channel.close()
+
+        if self._exporter_channel is not None:
+           await self._exporter_channel.close()
+        
+        if self._model_channel is not None:
+            await self._model_channel.close()
 
 
 __all__ = [
