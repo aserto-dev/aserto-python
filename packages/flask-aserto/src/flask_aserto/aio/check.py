@@ -121,7 +121,7 @@ class CheckMiddleware:
             )
         )
     
-    def _build_policy_context(self) -> StringMapper:
+    def _build_policy_path_mapper(self) -> StringMapper:
         async def mapper() -> str:
             policy_path = ""
             if self._options.policyPathMapper is not None:
@@ -171,7 +171,7 @@ class CheckMiddleware:
         @wraps(handler)
         async def decorated(*args: Any, **kwargs: Any) -> Response:
 
-            policy_mapper = self._build_policy_context()
+            policy_mapper = self._build_policy_path_mapper()
             resource_context = await self._resource_context_provider()
             decision = await self._aserto_middleware.is_allowed(
                 decision="allowed",

@@ -1,11 +1,13 @@
 from asyncio import gather
 from functools import wraps
-from typing import Any, Awaitable, Callable, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Optional, Union, cast, overload
 
-from aserto.client import AuthorizerOptions, Identity, ResourceContext
+from aserto.client import AuthorizerOptions, ResourceContext
 from aserto.client.authorizer.aio import AuthorizerClient
 from flask import Flask, jsonify
 from flask.wrappers import Response
+
+from .check import CheckMiddleware, CheckOptions
 
 from ._defaults import (
     DEFAULT_DISPLAY_STATE_MAP_ENDPOINT,
@@ -16,6 +18,7 @@ from ._defaults import (
     StringMapper,
     create_default_policy_path_resolver,
     Handler,
+    ObjectMapper,
     AuthorizationError
 )
 
@@ -188,6 +191,25 @@ class AsertoMiddleware:
             return await handler(*args, **kwargs)
 
         return cast(Handler, decorated)
+    
+    def check(
+        self, 
+        objId: Optional[str] = "",
+        objType: Optional[str] = "",
+        objIdMapper: Optional[StringMapper] = None,
+        objMapper: Optional[ObjectMapper] = None,
+        relationName: Optional[str] = "",
+        relationMapper: Optional[StringMapper] = None,
+        subjType: Optional[str] = "",
+        subjMapper: Optional[IdentityMapper] = None,
+        policyPath: Optional[str] = "",
+        policyPathMapper: Optional[StringMapper] = None,
+    ) -> CheckMiddleware:
+        opts = CheckOptions(
+            objId=objId, objType=objType,objIdMapper=objIdMapper,
+            objMapper=objMapper, relationName=relationName, relationMapper=relationMapper,
+            subjTyp=subjType, subjMapper=subjMapper, policyPath=policyPath, policyPathMapper=policyPathMapper)
+        return CheckMiddleware(options=opts, aserto_middleware=self)
 
     def register_display_state_map(
         self,

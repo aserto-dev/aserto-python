@@ -14,6 +14,7 @@ from ._defaults import (
     IdentityMapper,
     StringMapper,
     ResourceMapper,
+    ObjectMapper,
     AuthorizationError,
     Handler
 )
@@ -183,7 +184,23 @@ class AsertoMiddleware:
 
         return cast(Handler, decorated)
     
-    def check(self, opts: CheckOptions) -> CheckMiddleware:
+    def check(
+        self, 
+        objId: Optional[str] = "",
+        objType: Optional[str] = "",
+        objIdMapper: Optional[StringMapper] = None,
+        objMapper: Optional[ObjectMapper] = None,
+        relationName: Optional[str] = "",
+        relationMapper: Optional[StringMapper] = None,
+        subjType: Optional[str] = "",
+        subjMapper: Optional[IdentityMapper] = None,
+        policyPath: Optional[str] = "",
+        policyPathMapper: Optional[StringMapper] = None,
+    ) -> CheckMiddleware:
+        opts = CheckOptions(
+            objId=objId, objType=objType,objIdMapper=objIdMapper,
+            objMapper=objMapper, relationName=relationName, relationMapper=relationMapper,
+            subjTyp=subjType, subjMapper=subjMapper, policyPath=policyPath, policyPathMapper=policyPathMapper)
         return CheckMiddleware(options=opts, aserto_middleware=self)
 
     def register_display_state_map(
