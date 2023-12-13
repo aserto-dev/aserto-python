@@ -1,5 +1,6 @@
 import re
-from typing import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Awaitable, Callable, Any, TypeVar
 
 from aserto.client import Identity, ResourceContext
 from flask import request
@@ -12,10 +13,25 @@ __all__ = [
 ]
 
 
+@dataclass
+class Obj:
+    id: str
+    objType: str
+
+@dataclass(frozen=True)
+class AuthorizationError(Exception):
+    policy_instance_name: str
+    policy_path: str
+
+
+Handler = TypeVar("Handler", bound=Callable[..., Awaitable[Any]])
+
+
 DEFAULT_DISPLAY_STATE_MAP_ENDPOINT = "/__displaystatemap"
 
 IdentityMapper = Callable[[], Awaitable[Identity]]
 StringMapper = Callable[[], Awaitable[str]]
+ObjectMapper = Callable[[], Awaitable[Obj]]
 ResourceMapper = Callable[[], Awaitable[ResourceContext]]
 
 
