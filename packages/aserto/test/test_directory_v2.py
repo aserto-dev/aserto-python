@@ -9,6 +9,8 @@ from aserto.client.directory.v2 import (
     PaginationRequest,
 )
 
+from aserto.client.directory import InvalidArgument, NilClient
+
 
 @pytest.fixture(scope="module")
 def directory(topaz):
@@ -19,6 +21,29 @@ def directory(topaz):
     yield client
 
     client.close()
+
+def test_client_without_address(topaz):
+    with pytest.raises(InvalidArgument):
+        Directory(ca_cert_path=topaz.directory_grpc.ca_cert_path)
+
+def test_client_without_writer(topaz):
+    client = Directory(
+        reader_address=topaz.directory_grpc.address, ca_cert_path=topaz.directory_grpc.ca_cert_path
+    )
+    obj = client.get_object("user", "beth@the-smiths.com")
+    assert obj.type == "user"
+    assert obj.key == "beth@the-smiths.com"
+
+    with pytest.raises(NilClient):
+        client.set_object(
+        Object(
+            type=obj.type,
+            key=obj.key,
+            hash=obj.hash,
+            display_name="Beth Smith (modified)",
+            properties=obj.properties,
+        )
+    )
 
 
 def test_get_object(directory: Directory):
