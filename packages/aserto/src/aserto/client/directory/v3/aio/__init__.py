@@ -68,31 +68,61 @@ class Directory:
 
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
 
-        self.reader = (
+        self._reader = (
             reader.ReaderStub(self._reader_channel)
             if self._reader_channel is not None
             else None
         )
-        self.writer = (
+        self._writer = (
             writer.WriterStub(self._writer_channel)
             if self._writer_channel is not None
             else None
         )
-        self.model = (
+        self._model = (
             model.ModelStub(self._model_channel)
             if self._model_channel is not None
             else None
         )
-        self.importer = (
+        self._importer = (
             importer.ImporterStub(self._importer_channel)
             if self._importer_channel is not None
             else None
         )
-        self.exporter = (
+        self._exporter = (
             exporter.ExporterStub(self._exporter_channel)
             if self._exporter_channel is not None
             else None
         )
+
+    def reader(self) -> reader.ReaderStub:
+        if self._reader is None:
+            raise directory.NilClient
+        
+        return self._reader
+    
+    def writer(self) -> writer.WriterStub:
+        if self._writer is None:
+            raise directory.NilClient
+        
+        return self._writer
+    
+    def importer(self) -> importer.ImporterStub:
+        if self._importer is None:
+            raise directory.NilClient
+        
+        return self._importer
+    
+    def exporter(self) -> exporter.ExporterStub:
+        if self._exporter is None:
+            raise directory.NilClient
+        
+        return self._exporter
+    
+    def model(self) -> model.ModelStub:
+        if self._model is None:
+            raise directory.NilClient
+        
+        return self._model
 
     async def get_objects(
         self, object_type: str = "", page: typing.Optional[PaginationRequest] = None
@@ -115,10 +145,7 @@ class Directory:
                 the next page's token if there are more results
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
-        response = await self.reader.GetObjects(
+        response = await self.reader().GetObjects(
             reader.GetObjectsRequest(object_type=object_type, page=page),
             metadata=self._metadata,
         )
@@ -142,11 +169,8 @@ class Directory:
             list of directory objects
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
         try:
-            response = await self.reader.GetObjectMany(
+            response = await self.reader().GetObjectMany(
                 reader.GetObjectManyRequest(param=(obj.proto for obj in identifiers)),
                 metadata=self._metadata,
             )
@@ -202,11 +226,8 @@ class Directory:
         a directory object or, if with_relations is True, a GetObjectResponse.
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
         try:
-            response = await self.reader.GetObject(
+            response = await self.reader().GetObject(
                 reader.GetObjectRequest(
                     object_type=object_type,
                     object_id=object_id,
@@ -285,9 +306,6 @@ class Directory:
         properties: typing.Optional[typing.Union[typing.Mapping[str, typing.Any], Struct]] = None,
         etag: str = "",
     ) -> Object:
-        
-        if self.writer is None:
-            raise directory.NilClient
 
         obj = object
         if obj is None:
@@ -306,7 +324,7 @@ class Directory:
             )
 
         try:
-            response = await self.writer.SetObject(
+            response = await self.writer().SetObject(
                 writer.SetObjectRequest(object=obj), metadata=self._metadata
             )
             return response.result
@@ -334,10 +352,7 @@ class Directory:
         None
         """
 
-        if self.writer is None:
-            raise directory.NilClient
-
-        await self.writer.DeleteObject(
+        await self.writer().DeleteObject(
             writer.DeleteObjectRequest(
                 object_type=object_type, object_id=object_id, with_relations=with_relations
             ),
@@ -387,10 +402,7 @@ class Directory:
                 retrieved page information — the size of the page, and the next page's token
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
-        response = await self.reader.GetRelations(
+        response = await self.reader().GetRelations(
             reader.GetRelationsRequest(
                 object_type=object_type,
                 object_id=object_id,
@@ -474,11 +486,8 @@ class Directory:
             a RelationResponse if with_objects is set to True
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
         try:
-            response = await self.reader.GetRelation(
+            response = await self.reader().GetRelation(
                 reader.GetRelationRequest(
                     object_type=object_type,
                     object_id=object_id,
@@ -538,10 +547,7 @@ class Directory:
         The created relation
         """
 
-        if self.writer is None:
-            raise directory.NilClient
-
-        response = await self.writer.SetRelation(
+        response = await self.writer().SetRelation(
             writer.SetRelationRequest(
                 relation=Relation(
                     object_type=object_type,
@@ -587,10 +593,7 @@ class Directory:
         None
         """
 
-        if self.writer is None:
-            raise directory.NilClient
-
-        await self.writer.DeleteRelation(
+        await self.writer().DeleteRelation(
             writer.DeleteRelationRequest(
                 object_type=object_type,
                 object_id=object_id,
@@ -631,10 +634,7 @@ class Directory:
         True or False
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
-        response = await self.reader.Check(
+        response = await self.reader().Check(
             reader.CheckRequest(
                 object_type=object_type,
                 object_id=object_id,
@@ -674,10 +674,7 @@ class Directory:
         True or False
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
-        response = await self.reader.CheckRelation(
+        response = await self.reader().CheckRelation(
             reader.CheckRelationRequest(
                 object_type=object_type,
                 object_id=object_id,
@@ -717,10 +714,7 @@ class Directory:
         True or False
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
-        response = await self.reader.CheckPermission(
+        response = await self.reader().CheckPermission(
             reader.CheckPermissionRequest(
                 object_type=object_type,
                 object_id=object_id,
@@ -754,9 +748,6 @@ class Directory:
         The current manifest or None.
         """
 
-        if self.model is None:
-            raise directory.NilClient
-
         headers = self._metadata
         if etag:
             headers += (("if-none-match", etag),)
@@ -764,7 +755,7 @@ class Directory:
         updated_at = datetime.datetime.min
         current_etag = ""
         body: bytes = b""
-        async for resp in self.model.GetManifest(model.GetManifestRequest(), metadata=headers):
+        async for resp in self.model().GetManifest(model.GetManifestRequest(), metadata=headers):
             field = resp.WhichOneof("msg")
             if field == "metadata":
                 updated_at = resp.metadata.updated_at.ToDatetime()
@@ -790,9 +781,6 @@ class Directory:
         None
         """
 
-        if self.model is None:
-            raise directory.NilClient
-
         headers = self._metadata
         if etag:
             headers += (("if-match", etag),)
@@ -805,7 +793,7 @@ class Directory:
                         body=model.Body(data=body[i : i + helpers.MAX_CHUNK_BYTES])
                     )
 
-            await self.model.SetManifest(chunks(), metadata=headers)
+            await self.model().SetManifest(chunks(), metadata=headers)
         except RpcError as err:
             if err.code() == StatusCode.FAILED_PRECONDITION:  # type: ignore
                 raise ETagMismatchError from err
@@ -827,9 +815,6 @@ class Directory:
             a summary of the total number of object and relations imported.
         """
 
-        if self.importer is None:
-            raise directory.NilClient
-
         async def _import_iter() -> typing.AsyncIterator[importer.ImportRequest]:
             async for item in data:
                 if isinstance(item, Object):
@@ -840,7 +825,7 @@ class Directory:
         obj_counter = ImportCounter()
         rel_counter = ImportCounter()
 
-        async for r in self.importer.Import(_import_iter(), metadata=self._metadata):
+        async for r in self.importer().Import(_import_iter(), metadata=self._metadata):
             if r.object:
                 obj_counter = obj_counter.add(
                     ImportCounter(r.object.recv, r.object.set, r.object.delete, r.object.error)
@@ -869,14 +854,12 @@ class Directory:
         start_from: typing.Optional[datetime.datetime]
             if provided, only objects and relations that have been modified after this date are exported.
         """
-        if self.exporter is None:
-            raise directory.NilClient
         
         req = exporter.ExportRequest(options=options)
         if start_from is not None:
             req.start_from.FromDatetime(dt=start_from)
 
-        async for resp in self.exporter.Export(req, metadata=self._metadata):
+        async for resp in self.exporter().Export(req, metadata=self._metadata):
             field = resp.WhichOneof("msg")
             if field == "object":
                 yield resp.object

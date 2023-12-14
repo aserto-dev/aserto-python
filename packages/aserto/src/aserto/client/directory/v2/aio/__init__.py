@@ -57,26 +57,50 @@ class Directory:
         self._exporter_channel = build_grpc_channel(exporter_address, address, ca_cert_path)
 
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
-        self.reader = (
+        self._reader = (
             reader.ReaderStub(self._reader_channel)
             if self._reader_channel is not None
             else None
         )
-        self.writer = (
+        self._writer = (
             writer.WriterStub(self._writer_channel)
             if self._writer_channel is not None
             else None
         )
-        self.importer = (
+        self._importer = (
             importer.ImporterStub(self._importer_channel)
             if self._importer_channel is not None
             else None
         )
-        self.exporter = (
+        self._exporter = (
             exporter.ExporterStub(self._exporter_channel)
             if self._exporter_channel is not None
             else None
         )
+
+    def reader(self) -> reader.ReaderStub:
+        if self._reader is None:
+            raise directory.NilClient
+        
+        return self._reader
+    
+    def writer(self) -> writer.WriterStub:
+        if self._writer is None:
+            raise directory.NilClient
+        
+        return self._writer
+    
+    def importer(self) -> importer.ImporterStub:
+        if self._importer is None:
+            raise directory.NilClient
+        
+        return self._importer
+    
+    def exporter(self) -> exporter.ExporterStub:
+        if self._exporter is None:
+            raise directory.NilClient
+        
+        return self._exporter
 
     @overload
     async def get_object(
@@ -124,11 +148,8 @@ class Directory:
         a directory object or, if with_relations is True, a GetObjectResponse.
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
         try:
-            response = await self.reader.GetObject(
+            response = await self.reader().GetObject(
                 reader.GetObjectRequest(
                     param=common.ObjectIdentifier(type=object_type, key=object_key),
                     with_relations=with_relations,
@@ -166,10 +187,8 @@ class Directory:
             page : PaginationResponse
                 the next page's token if there are more results
         """
-        if self.reader is None:
-            raise directory.NilClient
 
-        response = await self.reader.GetObjects(
+        response = await self.reader().GetObjects(
             reader.GetObjectsRequest(
                 param=common.ObjectTypeIdentifier(name=object_type), page=page
             ),
@@ -195,11 +214,8 @@ class Directory:
             list of directory objects
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
         try:
-            response = await self.reader.GetObjectMany(
+            response = await self.reader().GetObjectMany(
                 reader.GetObjectManyRequest(param=(i.proto for i in identifiers)),
                 metadata=self._metadata,
             )
@@ -223,10 +239,7 @@ class Directory:
         The created/updated object.
         """
 
-        if self.writer is None:
-            raise directory.NilClient
-
-        response = await self.writer.SetObject(
+        response = await self.writer().SetObject(
             writer.SetObjectRequest(object=object), metadata=self._metadata
         )
         return response.result
@@ -250,10 +263,7 @@ class Directory:
         None
         """
 
-        if self.writer is None:
-            raise directory.NilClient
-
-        await self.writer.DeleteObject(
+        await self.writer().DeleteObject(
             writer.DeleteObjectRequest(
                 param=common.ObjectIdentifier(type=object_type, key=object_key),
                 with_relations=with_relations,
@@ -300,10 +310,7 @@ class Directory:
                 retrieved page information — the size of the page, and the next page's token
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
-        return await self.reader.GetRelations(
+        return await self.reader().GetRelations(
             reader.GetRelationsRequest(
                 param=common.RelationIdentifier(
                     object=common.ObjectIdentifier(type=object_type, key=object_key),
@@ -376,11 +383,8 @@ class Directory:
             a RelationResponse if with_objects is set to True
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
         try:
-            response = await self.reader.GetRelation(
+            response = await self.reader().GetRelation(
                 reader.GetRelationRequest(
                     param=common.RelationIdentifier(
                         object=common.ObjectIdentifier(type=object_type, key=object_key),
@@ -432,10 +436,7 @@ class Directory:
         The created relation
         """
 
-        if self.writer is None:
-            raise directory.NilClient
-
-        response = await self.writer.SetRelation(
+        response = await self.writer().SetRelation(
             writer.SetRelationRequest(
                 relation=Relation(
                     object=common.ObjectIdentifier(type=object_type, key=object_key),
@@ -475,15 +476,12 @@ class Directory:
         None
         """
 
-        if self.writer is None:
-            raise directory.NilClient
-
         relation_identifier = common.RelationIdentifier(
             object=common.ObjectIdentifier(type=object_type, key=object_key),
             subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
             relation=common.RelationTypeIdentifier(name=relation, object_type=object_type),
         )
-        await self.writer.DeleteRelation(
+        await self.writer().DeleteRelation(
             writer.DeleteRelationRequest(param=relation_identifier), metadata=self._metadata
         )
 
@@ -515,10 +513,7 @@ class Directory:
         True or False
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
-        response = await self.reader.CheckRelation(
+        response = await self.reader().CheckRelation(
             reader.CheckRelationRequest(
                 object=common.ObjectIdentifier(type=object_type, key=object_key),
                 relation=common.RelationTypeIdentifier(name=relation, object_type=object_type),
@@ -556,10 +551,7 @@ class Directory:
         True or False
         """
 
-        if self.reader is None:
-            raise directory.NilClient
-
-        response = await self.reader.CheckPermission(
+        response = await self.reader().CheckPermission(
             reader.CheckPermissionRequest(
                 object=common.ObjectIdentifier(type=object_type, key=object_key),
                 subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
