@@ -12,7 +12,7 @@ from aserto.client.directory.v2.aio import (
     PaginationRequest,
 )
 
-from aserto.client.directory import InvalidArgument, NilClient
+from aserto.client.directory import ConfigError
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -34,7 +34,7 @@ async def directory(topaz):
     await client.close()
 
 def test_client_without_address(topaz):
-    with pytest.raises(InvalidArgument):
+    with pytest.raises(ValueError):
         Directory(ca_cert_path=topaz.directory_grpc.ca_cert_path)
 
 @pytest.mark.asyncio
@@ -46,7 +46,7 @@ async def test_client_without_writer(topaz):
     assert obj.type == "user"
     assert obj.key == "beth@the-smiths.com"
 
-    with pytest.raises(NilClient):
+    with pytest.raises(ConfigError):
         await client.set_object(
         Object(
             type=obj.type,

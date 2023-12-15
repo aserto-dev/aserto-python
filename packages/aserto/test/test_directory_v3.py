@@ -15,7 +15,7 @@ from aserto.client.directory.v3 import (
     Struct,
 )
 
-from aserto.client.directory import InvalidArgument, NilClient
+from aserto.client.directory import ConfigError
 
 
 @pytest.fixture(scope="module")
@@ -29,7 +29,7 @@ def directory(topaz):
     client.close()
 
 def test_client_without_address(topaz):
-    with pytest.raises(InvalidArgument):
+    with pytest.raises(ValueError):
         Directory(ca_cert_path=topaz.directory_grpc.ca_cert_path)
 
 def test_client_without_writer(topaz):
@@ -42,7 +42,7 @@ def test_client_without_writer(topaz):
 
     obj.display_name = "Beth Smith (modified)"
 
-    with pytest.raises(NilClient):
+    with pytest.raises(ConfigError):
         client.set_object(object=obj)
 
 

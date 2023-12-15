@@ -27,17 +27,13 @@ from aserto.client.directory.v3.helpers import (
     RelationsResponse,
 )
 
-def build_grpc_channel(address: str, default_address: str, ca_cert_path: str) -> typing.Any:
+def build_grpc_channel(address: str, default_address: str, ca_cert_path: str) -> typing.Optional[grpc.Channel]:
     if address == "" and default_address == "":
         return None
         
-    if address == "":
-        return grpc.secure_channel(
-        target=default_address, credentials=directory.channel_credentials(cert=ca_cert_path)
-    )
-        
     return grpc.secure_channel(
-        target=address, credentials=directory.channel_credentials(cert=ca_cert_path)
+        target=address or default_address, 
+        credentials=directory.channel_credentials(cert=ca_cert_path),
     )
 
 
@@ -60,11 +56,8 @@ class Directory:
         if validation_error is not None:
             raise validation_error
         
-        self._reader_channel = build_grpc_channel(reader_address, address, ca_cert_path)
-        self._writer_channel = build_grpc_channel(writer_address, address, ca_cert_path)
-        self._importer_channel = build_grpc_channel(importer_address, address, ca_cert_path)
-        self._exporter_channel = build_grpc_channel(exporter_address, address, ca_cert_path)
-        self._model_channel = build_grpc_channel(model_address, address, ca_cert_path)
+        self.build_channels(address=address, reader_address=reader_address, writer_address=writer_address, 
+                importer_address=importer_address, exporter_address=exporter_address, model_address=model_address, ca_cert_path=ca_cert_path)
 
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
 
@@ -94,33 +87,58 @@ class Directory:
             else None
         )
 
+    def build_channels(
+            self, 
+            address: str,
+            reader_address: str,
+            writer_address: str,
+            importer_address: str,
+            exporter_address: str,
+            model_address: str,
+            ca_cert_path: str) -> None:
+        
+        if reader_address != "" and writer_address != "" and importer_address != "" and exporter_address != "" and model_address != "":
+            self._reader_channel = build_grpc_channel(reader_address, address, ca_cert_path)
+            self._writer_channel = build_grpc_channel(writer_address, address, ca_cert_path)
+            self._importer_channel = build_grpc_channel(importer_address, address, ca_cert_path)
+            self._exporter_channel = build_grpc_channel(exporter_address, address, ca_cert_path)
+            self._model_channel = build_grpc_channel(model_address, address, ca_cert_path)
+            return
+        
+        channel = build_grpc_channel("", address, ca_cert_path)
+        self._reader_channel =(build_grpc_channel(reader_address, address, ca_cert_path) if reader_address != "" else channel)
+        self._writer_channel =(build_grpc_channel(writer_address, address, ca_cert_path) if writer_address != "" else channel)
+        self._importer_channel =(build_grpc_channel(importer_address, address, ca_cert_path) if importer_address != "" else channel)
+        self._exporter_channel =(build_grpc_channel(exporter_address, address, ca_cert_path) if exporter_address != "" else channel)
+        self._model_channel =(build_grpc_channel(model_address, address, ca_cert_path) if model_address != "" else channel)
+        
+
     def reader(self) -> reader.ReaderStub:
         if self._reader is None:
-            raise directory.NilClient
+            raise directory.ConfigError("reader service address not specified")
         
         return self._reader
     
     def writer(self) -> writer.WriterStub:
         if self._writer is None:
-            raise directory.NilClient
+            raise directory.ConfigError("writer service address not specified")
         
         return self._writer
     
     def importer(self) -> importer.ImporterStub:
         if self._importer is None:
-            raise directory.NilClient
+            raise directory.ConfigError("importer service address not specified")
         
         return self._importer
     
     def exporter(self) -> exporter.ExporterStub:
         if self._exporter is None:
-            raise directory.NilClient
+            raise directory.ConfigError("expoerter service address not specified")
         
         return self._exporter
-    
     def model(self) -> model.ModelStub:
         if self._model is None:
-            raise directory.NilClient
+            raise directory.ConfigError("model service address not specified")
         
         return self._model
 

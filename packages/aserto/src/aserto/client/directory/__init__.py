@@ -6,10 +6,7 @@ from grpc import ChannelCredentials, ssl_channel_credentials, secure_channel
 class NotFoundError(Exception):
     pass
 
-class InvalidArgument(Exception):
-    pass
-
-class NilClient(Exception):
+class ConfigError(Exception):
     pass
 
 Header = Literal["authorization", "aserto-tenant-id", "if-match", "if-none-match"]
@@ -22,7 +19,7 @@ def validate_addresses(
     exporter_address: str,
     model_address: str) -> Any:
     if address == "" and reader_address == "" and writer_address == "" and importer_address == "" and exporter_address == "" and model_address == "":
-        return InvalidArgument
+        return ValueError("at least one directory service address must be specified")
         
     return None
 
