@@ -19,16 +19,6 @@ import aserto.client.directory.v2.helpers as helpers
 from aserto.client.directory import NotFoundError
 from aserto.client.directory.v2.helpers import ObjectIdentifier, RelationResponse
 
-
-def build_grpc_channel(address: str, default_address: str, ca_cert_path: str) -> Optional[grpc.Channel]:
-    if address == "" and default_address == "":
-        return None
-        
-    return grpc.secure_channel(
-        target=address or default_address, 
-        credentials=directory.channel_credentials(cert=ca_cert_path),
-    )
-
 class Directory:
     def __init__(
         self,
@@ -42,58 +32,38 @@ class Directory:
         importer_address: str = "",
         exporter_address: str = "",
     ) -> None:
-        validation_error = directory.validate_addresses(address=address, reader_address=reader_address, writer_address=writer_address,
-                              importer_address=importer_address, exporter_address=exporter_address, model_address="")
-        if validation_error is not None:
-            raise validation_error
-        
-        self.build_channels(address=address, reader_address=reader_address, writer_address=writer_address, 
-                importer_address=importer_address, exporter_address=exporter_address, ca_cert_path=ca_cert_path)
+        self._channels = directory.AioChannels(default_address=address, reader_address=reader_address, writer_address=writer_address,
+                            importer_address=importer_address, exporter_address=exporter_address, ca_cert_path=ca_cert_path)
 
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
+
+        reader_channel = self._channels.get(reader_address, address)
         self._reader = (
-            reader.ReaderStub(self._reader_channel)
-            if self._reader_channel is not None
+            reader.ReaderStub(reader_channel)
+            if reader_channel is not None
             else None
         )
+
+        writer_channel = self._channels.get(writer_address, address)
         self._writer = (
-            writer.WriterStub(self._writer_channel)
-            if self._writer_channel is not None
+            writer.WriterStub(writer_channel)
+            if writer_channel is not None
             else None
         )
+
+        importer_channel = self._channels.get(importer_address, address)
         self._importer = (
-            importer.ImporterStub(self._importer_channel)
-            if self._importer_channel is not None
+            importer.ImporterStub(importer_channel)
+            if importer_channel is not None
             else None
         )
+
+        exporter_channel = self._channels.get(exporter_address, address)
         self._exporter = (
-            exporter.ExporterStub(self._exporter_channel)
-            if self._exporter_channel is not None
+            exporter.ExporterStub(exporter_channel)
+            if exporter_channel is not None
             else None
         )
-
-    def build_channels(
-            self, 
-            address: str,
-            reader_address: str,
-            writer_address: str,
-            importer_address: str,
-            exporter_address: str,
-            ca_cert_path: str) -> None:
-        
-        if reader_address != "" and writer_address != "" and importer_address != "" and exporter_address != "":
-            self._reader_channel = build_grpc_channel(reader_address, address, ca_cert_path)
-            self._writer_channel = build_grpc_channel(writer_address, address, ca_cert_path)
-            self._importer_channel = build_grpc_channel(importer_address, address, ca_cert_path)
-            self._exporter_channel = build_grpc_channel(exporter_address, address, ca_cert_path)
-            return
-        
-        channel = build_grpc_channel("", address, ca_cert_path)
-        self._reader_channel =(build_grpc_channel(reader_address, address, ca_cert_path) if reader_address != "" else channel)
-        self._writer_channel =(build_grpc_channel(writer_address, address, ca_cert_path) if writer_address != "" else channel)
-        self._importer_channel =(build_grpc_channel(importer_address, address, ca_cert_path) if importer_address != "" else channel)
-        self._exporter_channel =(build_grpc_channel(exporter_address, address, ca_cert_path) if exporter_address != "" else channel)
-
 
     def reader(self) -> reader.ReaderStub:
         if self._reader is None:
@@ -580,18 +550,7 @@ class Directory:
 
     async def close(self) -> None:
         """Closes the gRPC channel"""
-
-        if self._reader_channel is not None:
-            await self._reader_channel.close()
-
-        if self._writer_channel is not None:
-            await self._writer_channel.close()
-
-        if self._importer_channel is not None:
-            await self._importer_channel.close()
-
-        if self._exporter_channel is not None:
-            await self._exporter_channel.close()
+        await self._channels.close()
 
     async def __aenter__(self):
         return self
