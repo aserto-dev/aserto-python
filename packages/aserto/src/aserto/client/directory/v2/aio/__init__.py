@@ -5,7 +5,6 @@ import aserto.directory.exporter.v2 as exporter
 import aserto.directory.importer.v2 as importer
 import aserto.directory.reader.v2 as reader
 import aserto.directory.writer.v2 as writer
-import grpc.aio as grpc
 from aserto.directory.common.v2 import Object, PaginationRequest, Relation
 from aserto.directory.reader.v2 import (
     GetObjectResponse,
@@ -15,6 +14,7 @@ from aserto.directory.reader.v2 import (
 from grpc import RpcError, StatusCode
 
 import aserto.client.directory as directory
+import aserto.client.directory.aio as aio
 import aserto.client.directory.v2.helpers as helpers
 from aserto.client.directory import NotFoundError
 from aserto.client.directory.v2.helpers import ObjectIdentifier, RelationResponse
@@ -32,7 +32,7 @@ class Directory:
         importer_address: str = "",
         exporter_address: str = "",
     ) -> None:
-        self._channels = directory.AioChannels(default_address=address, reader_address=reader_address, writer_address=writer_address,
+        self._channels = aio.Channels(default_address=address, reader_address=reader_address, writer_address=writer_address,
                             importer_address=importer_address, exporter_address=exporter_address, ca_cert_path=ca_cert_path)
 
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)

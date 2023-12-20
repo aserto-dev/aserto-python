@@ -14,6 +14,7 @@ from google.protobuf.struct_pb2 import Struct
 from grpc import RpcError, StatusCode
 
 import aserto.client.directory as directory
+import aserto.client.directory.aio as aio
 import aserto.client.directory.v3.helpers as helpers
 from aserto.client.directory import NotFoundError
 from aserto.client.directory.v3.helpers import (
@@ -41,7 +42,7 @@ class Directory:
         model_address: str = "",
     ) -> None:
         
-        self._channels = directory.AioChannels(default_address=address, reader_address=reader_address, writer_address=writer_address,
+        self._channels = aio.Channels(default_address=address, reader_address=reader_address, writer_address=writer_address,
                             importer_address=importer_address, exporter_address=exporter_address, model_address=model_address, ca_cert_path=ca_cert_path)
 
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
