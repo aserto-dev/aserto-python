@@ -29,11 +29,8 @@ class Channels:
         self._addresses = [default_address, reader_address, writer_address, importer_address, exporter_address, model_address]
         self._channels = dict()
         for x in self._addresses:
-            if x != "":
-                try: 
-                    self._channels[x]
-                except KeyError:
-                    self._channels[x] = build_grpc_channel(x, ca_cert_path=ca_cert_path)
+            if x and x not in self._channels:
+                self._channels[x] = build_grpc_channel(x, ca_cert_path=ca_cert_path)
 
     def get(self, address: str, default_address: str) -> Optional[grpc_aio.Channel]:
         if address != "":
