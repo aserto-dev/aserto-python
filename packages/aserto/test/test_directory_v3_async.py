@@ -16,6 +16,8 @@ from aserto.client.directory.v3.aio import (
     Struct,
 )
 
+from aserto.client.directory import ConfigError
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -35,6 +37,24 @@ async def directory(topaz):
     yield client
 
     await client.close()
+
+def test_client_without_address(topaz):
+    with pytest.raises(ValueError):
+        Directory(ca_cert_path=topaz.directory_grpc.ca_cert_path)
+
+@pytest.mark.asyncio
+async def test_client_without_writer(topaz):
+    client = Directory(
+        reader_address=topaz.directory_grpc.address, ca_cert_path=topaz.directory_grpc.ca_cert_path
+    )
+    obj = await client.get_object("user", "beth@the-smiths.com")
+    assert obj.type == "user"
+    assert obj.id == "beth@the-smiths.com"
+
+    obj.display_name = "Beth Smith (modified)"
+
+    with pytest.raises(ConfigError):
+        await client.set_object(object=obj)
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, Sequence, Union, overload
+from typing import List, Literal, Optional, Sequence, Union, overload, Any
 
 import aserto.directory.common.v2 as common
 import aserto.directory.exporter.v2 as exporter
@@ -15,27 +15,78 @@ from aserto.directory.reader.v2 import (
 
 import aserto.client.directory as directory
 import aserto.client.directory.v2.helpers as helpers
-from aserto.client.directory import NotFoundError
+from aserto.client.directory import ConfigError, NotFoundError
 from aserto.client.directory.v2.helpers import ObjectIdentifier, RelationResponse
-
 
 class Directory:
     def __init__(
         self,
         *,
-        address: str,
         api_key: str = "",
         tenant_id: str = "",
         ca_cert_path: str = "",
+        address: str = "",
+        reader_address: str = "",
+        writer_address: str = "",
+        importer_address: str = "",
+        exporter_address: str = "",
     ) -> None:
-        self._channel = grpc.secure_channel(
-            target=address, credentials=directory.channel_credentials(cert=ca_cert_path)
-        )
+        self._channels = directory.Channels(default_address=address, reader_address=reader_address, writer_address=writer_address,
+                            importer_address=importer_address, exporter_address=exporter_address, ca_cert_path=ca_cert_path)
+
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
-        self.reader = reader.ReaderStub(self._channel)
-        self.writer = writer.WriterStub(self._channel)
-        self.importer = importer.ImporterStub(self._channel)
-        self.exporter = exporter.ExporterStub(self._channel)
+
+        reader_channel = self._channels.get(reader_address, address)
+        self._reader = (
+            reader.ReaderStub(reader_channel)
+            if reader_channel is not None
+            else None
+        )
+
+        writer_channel = self._channels.get(writer_address, address)
+        self._writer = (
+            writer.WriterStub(writer_channel)
+            if writer_channel is not None
+            else None
+        )
+
+        importer_channel = self._channels.get(importer_address, address)
+        self._importer = (
+            importer.ImporterStub(importer_channel)
+            if importer_channel is not None
+            else None
+        )
+
+        exporter_channel = self._channels.get(exporter_address, address)
+        self._exporter = (
+            exporter.ExporterStub(exporter_channel)
+            if exporter_channel is not None
+            else None
+        )
+
+    def reader(self) -> reader.ReaderStub:
+        if self._reader is None:
+            raise ConfigError("reader service address not specified")
+        
+        return self._reader
+    
+    def writer(self) -> writer.WriterStub:
+        if self._writer is None:
+            raise ConfigError("writer service address not specified")
+        
+        return self._writer
+    
+    def importer(self) -> importer.ImporterStub:
+        if self._importer is None:
+            raise ConfigError("importer service address not specified")
+        
+        return self._importer
+    
+    def exporter(self) -> exporter.ExporterStub:
+        if self._exporter is None:
+            raise ConfigError("expoerter service address not specified")
+        
+        return self._exporter
 
     @overload
     def get_object(
@@ -84,7 +135,7 @@ class Directory:
         """
 
         try:
-            response = self.reader.GetObject(
+            response = self.reader().GetObject(
                 reader.GetObjectRequest(
                     param=common.ObjectIdentifier(type=object_type, key=object_key),
                     with_relations=with_relations,
@@ -122,7 +173,7 @@ class Directory:
         """
 
         try:
-            response = self.reader.GetObjectMany(
+            response = self.reader().GetObjectMany(
                 reader.GetObjectManyRequest(param=(i.proto for i in identifiers)),
                 metadata=self._metadata,
             )
@@ -152,7 +203,8 @@ class Directory:
             page : PaginationResponse
                 the next page's token if there are more results
         """
-        response = self.reader.GetObjects(
+
+        response = self.reader().GetObjects(
             reader.GetObjectsRequest(
                 param=common.ObjectTypeIdentifier(name=object_type), page=page
             ),
@@ -174,7 +226,7 @@ class Directory:
         The created/updated object.
         """
 
-        response = self.writer.SetObject(
+        response = self.writer().SetObject(
             writer.SetObjectRequest(object=object), metadata=self._metadata
         )
         return response.result
@@ -198,7 +250,7 @@ class Directory:
         None
         """
 
-        self.writer.DeleteObject(
+        self.writer().DeleteObject(
             writer.DeleteObjectRequest(
                 param=common.ObjectIdentifier(type=object_type, key=object_key),
                 with_relations=with_relations,
@@ -268,7 +320,7 @@ class Directory:
         """
 
         try:
-            response = self.reader.GetRelation(
+            response = self.reader().GetRelation(
                 reader.GetRelationRequest(
                     param=common.RelationIdentifier(
                         object=common.ObjectIdentifier(type=object_type, key=object_key),
@@ -336,7 +388,7 @@ class Directory:
                 retrieved page information — the size of the page, and the next page's token
         """
 
-        return self.reader.GetRelations(
+        return self.reader().GetRelations(
             reader.GetRelationsRequest(
                 param=common.RelationIdentifier(
                     object=common.ObjectIdentifier(type=object_type, key=object_key),
@@ -371,7 +423,7 @@ class Directory:
         The created relation
         """
 
-        response = self.writer.SetRelation(
+        response = self.writer().SetRelation(
             writer.SetRelationRequest(
                 relation=Relation(
                     object=common.ObjectIdentifier(type=object_type, key=object_key),
@@ -416,7 +468,7 @@ class Directory:
             subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
             relation=common.RelationTypeIdentifier(name=relation, object_type=object_type),
         )
-        self.writer.DeleteRelation(
+        self.writer().DeleteRelation(
             writer.DeleteRelationRequest(param=relation_identifier), metadata=self._metadata
         )
 
@@ -448,7 +500,7 @@ class Directory:
         True or False
         """
 
-        response = self.reader.CheckRelation(
+        response = self.reader().CheckRelation(
             reader.CheckRelationRequest(
                 object=common.ObjectIdentifier(type=object_type, key=object_key),
                 subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
@@ -486,7 +538,7 @@ class Directory:
         True or False
         """
 
-        response = self.reader.CheckPermission(
+        response = self.reader().CheckPermission(
             reader.CheckPermissionRequest(
                 object=common.ObjectIdentifier(type=object_type, key=object_key),
                 subject=common.ObjectIdentifier(type=subject_type, key=subject_key),
@@ -498,8 +550,7 @@ class Directory:
 
     def close(self) -> None:
         """Closes the gRPC channel"""
-
-        self._channel.close()
+        self._channels.close()
 
     def __enter__(self):
         return self

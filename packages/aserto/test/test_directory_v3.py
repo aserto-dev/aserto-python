@@ -15,6 +15,8 @@ from aserto.client.directory.v3 import (
     Struct,
 )
 
+from aserto.client.directory import ConfigError
+
 
 @pytest.fixture(scope="module")
 def directory(topaz):
@@ -25,6 +27,23 @@ def directory(topaz):
     yield client
 
     client.close()
+
+def test_client_without_address(topaz):
+    with pytest.raises(ValueError):
+        Directory(ca_cert_path=topaz.directory_grpc.ca_cert_path)
+
+def test_client_without_writer(topaz):
+    client = Directory(
+        reader_address=topaz.directory_grpc.address, ca_cert_path=topaz.directory_grpc.ca_cert_path
+    )
+    obj = client.get_object("user", "beth@the-smiths.com")
+    assert obj.type == "user"
+    assert obj.id == "beth@the-smiths.com"
+
+    obj.display_name = "Beth Smith (modified)"
+
+    with pytest.raises(ConfigError):
+        client.set_object(object=obj)
 
 
 def test_get_object(directory: Directory):
