@@ -296,6 +296,7 @@ class Directory:
 
         obj = object
         if obj is None:
+            properties = properties or {}
             props = (
                 properties
                 if isinstance(properties, Struct)
