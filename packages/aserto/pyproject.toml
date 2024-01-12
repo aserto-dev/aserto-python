@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aserto"
-version = "0.30.2"
+version = "0.30.3"
 description = "Aserto API client"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
