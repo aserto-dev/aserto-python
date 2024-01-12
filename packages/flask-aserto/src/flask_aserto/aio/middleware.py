@@ -203,12 +203,14 @@ class AsertoMiddleware:
         subjType: Optional[str] = "",
         subjMapper: Optional[IdentityMapper] = None,
         policyPath: Optional[str] = "",
+        policyRoot: Optional[str] = "",
         policyPathMapper: Optional[StringMapper] = None,
     ) -> CheckMiddleware:
         opts = CheckOptions(
             objId=objId, objType=objType,objIdMapper=objIdMapper,
             objMapper=objMapper, relationName=relationName, relationMapper=relationMapper,
-            subjType=subjType, subjMapper=subjMapper, policyPath=policyPath, policyPathMapper=policyPathMapper)
+            subjType=subjType, subjMapper=subjMapper, policyRoot=policyRoot,
+            policyPath=policyPath, policyPathMapper=policyPathMapper)
         return CheckMiddleware(options=opts, aserto_middleware=self)
 
     def register_display_state_map(
