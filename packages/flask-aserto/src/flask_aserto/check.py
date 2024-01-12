@@ -130,10 +130,9 @@ class CheckMiddleware:
                 policy_path = self._options.policyPathMapper()
             if policy_path == "":
                 policy_path = "check"
-                if self._options.policyRoot:
-                    policy_path = self._options.policyRoot + "." + policy_path
-                elif self._aserto_middleware._policy_path_root != "":
-                    policy_path = self._aserto_middleware._policy_path_root + "." + policy_path
+                policy_root = self._options.policyRoot or self._aserto_middleware._policy_path_root
+                if policy_root:
+                    policy_path = f"{policy_root}.{policy_path}"
             return policy_path
         
         return mapper
