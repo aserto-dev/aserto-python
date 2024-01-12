@@ -31,6 +31,7 @@ class CheckOptions:
     subjType: Optional[str] = ""
     subjMapper: Optional[IdentityMapper] = None
     policyPath: Optional[str] = ""
+    policyRoot: Optional[str] = ""
     policyPathMapper: Optional[StringMapper] = None
 
 
@@ -110,6 +111,7 @@ class CheckMiddleware:
                     relationName=kwargs.get("relation_name", self._options.relationName),
                     relationMapper=kwargs.get("relation_mapper", self._options.relationMapper),
                     policyPath=kwargs.get("policy_path", self._options.policyPath),
+                    policyRoot=kwargs.get("policy_root", self._options.policyRoot),
                     subjMapper=kwargs.get("identity_provider", self._identity_provider),
                     objId=kwargs.get("object_id", self._options.objId),
                     objType=kwargs.get("object_type", self._options.objType),
@@ -128,7 +130,9 @@ class CheckMiddleware:
                 policy_path = self._options.policyPathMapper()
             if policy_path == "":
                 policy_path = "check"
-                if self._aserto_middleware._policy_path_root != "":
+                if self._options.policyRoot:
+                    policy_path = self._options.policyRoot + "." + policy_path
+                elif self._aserto_middleware._policy_path_root != "":
                     policy_path = self._aserto_middleware._policy_path_root + "." + policy_path
             return policy_path
         
@@ -178,7 +182,7 @@ class CheckMiddleware:
                 identity_provider=self._identity_provider,
                 policy_instance_name=self._aserto_middleware._policy_instance_name or "",
                 policy_instance_label=self._aserto_middleware._policy_instance_label or "",
-                policy_path_root=self._aserto_middleware._policy_path_root,
+                policy_path_root=self._options.policyRoot or self._aserto_middleware._policy_path_root,
                 policy_path_resolver=policy_mapper,
                 resource_context_provider=self._resource_context_provider,
             )
