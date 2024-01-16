@@ -80,8 +80,7 @@ jobs:
           token: ${{ secrets.VAULT_TOKEN }}
           secrets: |
             kv/data/github  "SSH_PRIVATE_KEY" | SSH_PRIVATE_KEY;
-            kv/data/pypi    "USERNAME"        | POETRY_HTTP_BASIC_PYPI_USERNAME;
-            kv/data/pypi    "PASSWORD"        | POETRY_HTTP_BASIC_PYPI_PASSWORD;
+            kv/data/pypi "API_TOKEN" | POETRY_HTTP_BASIC_PYPI_PASSWORD;
 
       - name: Checkout
         uses: actions/checkout@v3
@@ -128,6 +127,9 @@ jobs:
         uses: snok/install-poetry@v1
 
       - name: Build and push the python package
+        env:
+          # When using a PYPI API token, the user name must be set to "__token__"
+          POETRY_HTTP_BASIC_PYPI_USERNAME: __token__
         run: go run mage.go release
 
       - name: Bump to the next version
