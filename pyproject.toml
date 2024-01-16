@@ -5,9 +5,9 @@ description = "Aserto API client"
 readme = "README.md"
 authors = ["Aserto, Inc. <pypi@aserto.com>"]
 maintainers = ["authereal <authereal@aserto.com>"]
-homepage = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto"
-repository = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto"
-documentation = "https://github.com/aserto-dev/aserto-python/tree/HEAD/packages/aserto"
+homepage = "https://github.com/aserto-dev/aserto-python/tree/HEAD"
+repository = "https://github.com/aserto-dev/aserto-python/tree/HEAD"
+documentation = "https://github.com/aserto-dev/aserto-python/tree/HEAD"
 license = "Apache-2.0"
 classifiers = [
   "Intended Audience :: Developers",
