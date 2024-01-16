@@ -57,26 +57,11 @@ jobs:
         with:
           version: 1.2.1
 
-      - name: Lint & test aserto package
+      - name: Run lint
         run: |
-          cd packages/aserto
           poetry install
           poetry run pyright .
+      
+      - name: Run tests
+        run: |
           poetry run pytest -vv
-          cd ../..
-
-      - name: Lint & test aserto-idp package
-        run : |
-          cd packages/aserto-idp
-          poetry install
-          poetry run pyright .
-          poetry run pytest -vv
-          cd ../..
-
-      - name: Lint & test flask-aserto package
-        run : |
-          cd packages/flask-aserto
-          poetry install
-          poetry run pyright .
-          poetry run pytest -vv
-          cd ../..
