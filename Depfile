@@ -1,0 +1,5 @@
+---
+go:
+  sver:
+    importPath: "github.com/aserto-dev/sver/cmd/sver"
+    version: "v1.3.13"

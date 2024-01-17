@@ -18,8 +18,8 @@ env:
 
 
 jobs:
-  tests:
-    name: Run tests
+  test:
+    name: Run test
     runs-on: ubuntu-latest
     steps:
       - name: Read Configuration
@@ -57,26 +57,89 @@ jobs:
         with:
           version: 1.2.1
 
-      - name: Lint & test aserto package
+      - name: Run lint
         run: |
-          cd packages/aserto
           poetry install
           poetry run pyright .
+      
+      - name: Run tests
+        run: |
           poetry run pytest -vv
-          cd ../..
+  release:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
 
-      - name: Lint & test aserto-idp package
-        run : |
-          cd packages/aserto-idp
-          poetry install
-          poetry run pyright .
-          poetry run pytest -vv
-          cd ../..
+    name: Release to pypi
+    steps:
+      - name: Read Configuration
+        uses: hashicorp/vault-action@v2.4.1
+        id: vault
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          token: ${{ secrets.VAULT_TOKEN }}
+          secrets: |
+            kv/data/github  "SSH_PRIVATE_KEY" | SSH_PRIVATE_KEY;
+            kv/data/pypi "API_TOKEN" | POETRY_HTTP_BASIC_PYPI_PASSWORD;
 
-      - name: Lint & test flask-aserto package
-        run : |
-          cd packages/flask-aserto
-          poetry install
-          poetry run pyright .
-          poetry run pytest -vv
-          cd ../..
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup caching
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+            .ext
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum', 'Depfile') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install dependencies
+        run: |
+            mkdir -p $HOME/.ssh
+            umask 0077 && echo -e "${SSH_PRIVATE_KEY}" > $HOME/.ssh/id_rsa
+            ssh-keyscan github.com >> $HOME/.ssh/known_hosts
+
+            git config --global url."git@github.com:".insteadOf https://github.com/
+            git config --global user.email "github-bot@aserto.com"
+            git config --global user.name "Aserto Bot"
+
+            eval `ssh-agent`
+            ssh-add $HOME/.ssh/id_rsa
+
+            go run mage.go deps
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Build and push the python package
+        env:
+          # When using a PYPI API token, the user name must be set to "__token__"
+          POETRY_HTTP_BASIC_PYPI_USERNAME: __token__
+        run: go run mage.go release
+
+      - name: Bump to the next version
+        run: go run mage.go bump patch
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          message: 'Bump to next version'
+          add: 'pyproject.toml'
+          push: origin HEAD:main
+
