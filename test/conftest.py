@@ -1,8 +1,8 @@
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 import os.path
 import subprocess
 import time
-from dataclasses import dataclass
-from datetime import datetime, timedelta
 from typing import Optional
 
 import grpc
@@ -91,6 +91,8 @@ def topaz():
 
     svc.stop()
 
+    time.sleep(1)
+
     subprocess.run(
         "rm ~/.config/topaz/db/directory.db",
         shell=True,
@@ -104,7 +106,7 @@ def topaz():
 
 def topaz_configure() -> Topaz:
     subprocess.run(
-        "topaz configure -r ghcr.io/aserto-policies/policy-todo:2.1.0 -n todo -d",
+        "topaz configure -r ghcr.io/aserto-policies/policy-todo:3 -n todo -d -f --enable-v2",
         shell=True,
         capture_output=True,
         check=True,

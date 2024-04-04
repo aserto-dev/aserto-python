@@ -1,23 +1,24 @@
 import datetime
-import typing 
+import typing
 
+from aserto.directory.common.v3 import Object, PaginationRequest, Relation
 import aserto.directory.exporter.v3 as exporter
 import aserto.directory.importer.v3 as importer
 import aserto.directory.model.v3 as model
 import aserto.directory.reader.v3 as reader
+from aserto.directory.reader.v3 import GetObjectResponse, GetObjectsResponse
 import aserto.directory.writer.v3 as writer
 import google.protobuf.json_format as json_format
-import grpc
-from aserto.directory.common.v3 import Object, PaginationRequest, Relation
-from aserto.directory.reader.v3 import GetObjectResponse, GetObjectsResponse
 from google.protobuf.struct_pb2 import Struct
+import grpc
 
 import aserto.client.directory as directory
-import aserto.client.directory.v3.helpers as helpers
 from aserto.client.directory import NotFoundError
+import aserto.client.directory.v3.helpers as helpers
 from aserto.client.directory.v3.helpers import (
     ETagMismatchError,
     ExportOption,
+    FindResponse,
     ImportCounter,
     ImportResponse,
     Manifest,
@@ -25,6 +26,7 @@ from aserto.client.directory.v3.helpers import (
     RelationResponse,
     RelationsResponse,
 )
+
 
 class Directory:
     def __init__(
@@ -39,76 +41,66 @@ class Directory:
         exporter_address: str = "",
         model_address: str = "",
     ) -> None:
-        
-        self._channels = directory.Channels(default_address=address, reader_address=reader_address, writer_address=writer_address,
-                            importer_address=importer_address, exporter_address=exporter_address, model_address=model_address, ca_cert_path=ca_cert_path)
+        self._channels = directory.Channels(
+            default_address=address,
+            reader_address=reader_address,
+            writer_address=writer_address,
+            importer_address=importer_address,
+            exporter_address=exporter_address,
+            model_address=model_address,
+            ca_cert_path=ca_cert_path,
+        )
 
         self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
 
         reader_channel = self._channels.get(reader_address, address)
-        self._reader = (
-            reader.ReaderStub(reader_channel)
-            if reader_channel is not None
-            else None
-        )
+        self._reader = reader.ReaderStub(reader_channel) if reader_channel is not None else None
 
         writer_channel = self._channels.get(writer_address, address)
-        self._writer = (
-            writer.WriterStub(writer_channel)
-            if writer_channel is not None
-            else None
-        )
+        self._writer = writer.WriterStub(writer_channel) if writer_channel is not None else None
 
         model_channel = self._channels.get(model_address, address)
-        self._model = (
-            model.ModelStub(model_channel)
-            if model_channel is not None
-            else None
-        )
+        self._model = model.ModelStub(model_channel) if model_channel is not None else None
 
         importer_channel = self._channels.get(importer_address, address)
         self._importer = (
-            importer.ImporterStub(importer_channel)
-            if importer_channel is not None
-            else None
+            importer.ImporterStub(importer_channel) if importer_channel is not None else None
         )
 
         exporter_channel = self._channels.get(exporter_address, address)
         self._exporter = (
-            exporter.ExporterStub(exporter_channel)
-            if exporter_channel is not None
-            else None
+            exporter.ExporterStub(exporter_channel) if exporter_channel is not None else None
         )
 
     def reader(self) -> reader.ReaderStub:
         if self._reader is None:
             raise directory.ConfigError("reader service address not specified")
-        
+
         return self._reader
-    
+
     def writer(self) -> writer.WriterStub:
         if self._writer is None:
             raise directory.ConfigError("writer service address not specified")
-        
+
         return self._writer
-    
+
     def importer(self) -> importer.ImporterStub:
         if self._importer is None:
             raise directory.ConfigError("importer service address not specified")
-        
+
         return self._importer
-    
+
     def exporter(self) -> exporter.ExporterStub:
         if self._exporter is None:
             raise directory.ConfigError("expoerter service address not specified")
-        
+
         return self._exporter
+
     def model(self) -> model.ModelStub:
         if self._model is None:
             raise directory.ConfigError("model service address not specified")
-        
-        return self._model
 
+        return self._model
 
     @typing.overload
     def get_object(
@@ -293,7 +285,6 @@ class Directory:
         properties: typing.Optional[typing.Union[typing.Mapping[str, typing.Any], Struct]] = None,
         etag: str = "",
     ) -> Object:
-
         obj = object
         if obj is None:
             properties = properties or {}
@@ -591,6 +582,112 @@ class Directory:
             metadata=self._metadata,
         )
 
+    def find_subjects(
+        self,
+        object_type: str,
+        object_id: str,
+        relation: str,
+        subject_type: str,
+        subject_relation: str = "",
+        explain: bool = False,
+        trace: bool = False,
+    ) -> FindResponse:
+        """Find subjects that have a given relation to or permission on a specified object.
+
+        Parameters
+        ----
+        object_type : str
+            the type of object to search from.
+        object_id: str
+            the id of the object to search from.
+        relation: str
+            the relation or permission to look for.
+        subject_type : str
+            the type of subject to search for.
+        subject_relation: str
+            optional subject relation. This is useful when searching for intermediate subjects like groups.
+        explain: bool
+            if True, the response includes, for each match, the set of relations that grant the specified relation or
+            permission .
+        trace: bool
+            if True, the response includes the trace of the search process.
+
+        Returns
+        ----
+        FindResponse
+        """
+        resp = self.reader().GetGraph(
+            reader.GetGraphRequest(
+                object_type=object_type,
+                object_id=object_id,
+                relation=relation,
+                subject_type=subject_type,
+                subject_relation=subject_relation,
+                explain=explain,
+                trace=trace,
+            ),
+            metadata=self._metadata,
+        )
+
+        return FindResponse(
+            [ObjectIdentifier(type=r.object_type, id=r.object_id) for r in resp.results],
+            helpers.explanation_to_dict(resp.explanation),
+            resp.trace,
+        )
+
+    def find_objects(
+        self,
+        object_type: str,
+        relation: str,
+        subject_type: str,
+        subject_id: str,
+        subject_relation: str = "",
+        explain: bool = False,
+        trace: bool = False,
+    ) -> FindResponse:
+        """Find objects that a given subject has a specified relation to or permission on.
+
+        Parameters
+        ----
+        object_type : str
+            the type of object to search for.
+        relation: str
+            the relation or permission to look for.
+        subject_type : str
+            the type of subject to search from.
+        subject_id: str
+            the id of the subject to search from.
+        subject_relation: str
+            optional subject relation. This is useful when searching for intermediate subjects like groups.
+        explain: bool
+            if True, the response includes, for each match, the set of relations that grant the specified relation or
+            permission .
+        trace: bool
+            if True, the response includes the trace of the search process.
+
+        Returns
+        ----
+        FindResponse
+        """
+        resp = self.reader().GetGraph(
+            reader.GetGraphRequest(
+                object_type=object_type,
+                relation=relation,
+                subject_type=subject_type,
+                subject_id=subject_id,
+                subject_relation=subject_relation,
+                explain=explain,
+                trace=trace,
+            ),
+            metadata=self._metadata,
+        )
+
+        return FindResponse(
+            [ObjectIdentifier(type=r.object_type, id=r.object_id) for r in resp.results],
+            helpers.explanation_to_dict(resp.explanation),
+            resp.trace,
+        )
+
     def check(
         self,
         object_type: str,
@@ -619,7 +716,7 @@ class Directory:
         ----
         True or False
         """
-        
+
         response = self.reader().Check(
             reader.CheckRequest(
                 object_type=object_type,

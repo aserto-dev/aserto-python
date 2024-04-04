@@ -248,6 +248,36 @@ allowed = ds.check(
 )
 ```
 
+#### `find_subjects`
+
+Find subjects that have a given relation to or permission on a specified object.
+
+```py
+reponse = ds.find_subjects(
+    object_type="folder",
+    object_id="/path/to/folder",
+    relation="can_delete",
+    subject_type="user"
+)
+
+assert ObjectIdentifier("user", "euang@acmecorp.com") in response.results
+```
+
+#### `find_objects`
+
+Find objects that a given subject has a specified relation to or permission on.
+
+```py
+reponse = ds.find_objects(
+    object_type="folder",
+    relation="can_delete",
+    subject_type="user"
+    subjecct_id="euang@acmecorp.com"
+)
+
+assert ObjectIdentifier("folder", "/path/to/folder") in response.results
+```
+
 #### `get_manifest `
 
 Download the directory manifest.

@@ -1,9 +1,10 @@
 import asyncio
 import datetime
 
-import pytest
 from grpc import RpcError
+import pytest
 
+from aserto.client.directory import ConfigError
 from aserto.client.directory.v3.aio import (
     Directory,
     ETagMismatchError,
@@ -15,8 +16,6 @@ from aserto.client.directory.v3.aio import (
     Relation,
     Struct,
 )
-
-from aserto.client.directory import ConfigError
 
 
 @pytest.fixture(scope="session")
@@ -38,9 +37,11 @@ async def directory(topaz):
 
     await client.close()
 
+
 def test_client_without_address(topaz):
     with pytest.raises(ValueError):
         Directory(ca_cert_path=topaz.directory_grpc.ca_cert_path)
+
 
 @pytest.mark.asyncio
 async def test_client_without_writer(topaz):
@@ -309,6 +310,40 @@ async def test_check_permission(directory: Directory):
 
     assert check_true == True
     assert check_false == False
+
+
+@pytest.mark.asyncio
+async def test_find_objects(directory: Directory):
+    results = await directory.find_objects(
+        object_type="user",
+        relation="complain",
+        subject_type="user",
+        subject_id="morty@the-citadel.com",
+        explain=True,
+        trace=True,
+    )
+
+    assert len(results.results) == 1
+    assert results.results[0].id == "rick@the-citadel.com"
+    assert results.results[0].type == "user"
+
+    assert "user:rick@the-citadel.com" in results.explanation
+    assert len(results.explanation["user:rick@the-citadel.com"]) == 1
+    assert len(results.explanation["user:rick@the-citadel.com"][0]) == 1
+    assert isinstance(results.explanation["user:rick@the-citadel.com"][0][0], str)
+
+
+@pytest.mark.asyncio
+async def test_find_subjects(directory: Directory):
+    results = await directory.find_subjects(
+        object_type="user",
+        object_id="rick@the-citadel.com",
+        relation="complain",
+        subject_type="user",
+    )
+
+    assert len(results.results) == 3
+    assert ObjectIdentifier(type="user", id="morty@the-citadel.com") in results.results
 
 
 @pytest.mark.asyncio
