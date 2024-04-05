@@ -33,7 +33,7 @@ aiohttp = "^3.8.0"
 grpcio = "^1.49.0"
 protobuf = "^4.21.0"
 aserto-authorizer = "^0.20.2"
-aserto-directory = "^0.31.0"
+aserto-directory = "^0.31.3"
 
 [tool.poetry.dev-dependencies]
 black = "^23.0"

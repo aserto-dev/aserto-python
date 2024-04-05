@@ -1,11 +1,12 @@
-import datetime
 from dataclasses import dataclass
+import datetime
 from typing import List, Mapping, Optional
 
 from aserto.directory.common.v3 import Object
 from aserto.directory.common.v3 import ObjectIdentifier as ObjectIdentifierProto
 from aserto.directory.common.v3 import PaginationResponse, Relation
 from aserto.directory.exporter.v3 import Option
+from google.protobuf.struct_pb2 import Struct
 
 MAX_CHUNK_BYTES = 64 * 1024
 
@@ -60,6 +61,23 @@ class RelationsResponse:
 
 
 @dataclass(frozen=True)
+class FindResponse:
+    """
+    Response to find_subjects and find_objects calls.
+
+    Attributes
+    ----
+    results      The list of matching object identifiers.
+    explanation  For each object in results, a list of paths that connect the result to the searched object.
+    trace        The sequence of queries that were executed to find the results.
+    """
+
+    results: List[ObjectIdentifier]
+    explanation: Mapping[str, List[List[str]]]
+    trace: List[str]
+
+
+@dataclass(frozen=True)
 class Manifest:
     updated_at: datetime.datetime
     etag: str
@@ -95,3 +113,7 @@ def relation_objects(objects: Mapping[str, Object]) -> Mapping[ObjectIdentifier,
         res[ObjectIdentifier(obj_type, obj_id)] = obj
 
     return res
+
+
+def explanation_to_dict(explanation: Struct) -> Mapping[str, List[List[str]]]:
+    return {k: [[p for p in path] for path in v] for k, v in explanation.items()}  # type: ignore
