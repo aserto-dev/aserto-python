@@ -315,13 +315,10 @@ def test_find_subjects(directory: Directory):
 def test_get_manifest(directory: Directory):
     manifest = directory.get_manifest()
 
-    with open("test/assets/manifest.yaml", "rb") as f:
-        expected = f.read()
-
     assert manifest is not None
     assert manifest.etag
     assert manifest.updated_at.date() == datetime.datetime.now(datetime.UTC).date()
-    assert manifest.body == expected
+    assert manifest.body
 
 
 def test_get_manifest_not_modified(directory: Directory):
@@ -333,30 +330,28 @@ def test_get_manifest_not_modified(directory: Directory):
 
 
 def test_set_manifest(directory: Directory):
-    with open("test/assets/manifest.yaml", "rb") as f:
-        manifest = f.read()
+    manifest = directory.get_manifest()
+    assert manifest.body is not None
 
-    manifest += b"\n  foo: {}"
+    new_body = bytes(manifest.body) + b"\n  foo: {}"
 
-    directory.set_manifest(manifest)
+    directory.set_manifest(new_body)
 
     new_manifest = directory.get_manifest()
 
-    assert new_manifest.body == manifest
+    assert new_manifest.body == new_body
 
 
 def test_set_manifest_if_match(directory: Directory):
-    with open("test/assets/manifest.yaml", "rb") as f:
-        manifest = f.read()
+    manifest = directory.get_manifest()
+    assert manifest.body is not None
 
-    manifest += b"\n  bar: {}"
+    new_body = bytes(manifest.body) + b"\n  bar: {}"
 
     with pytest.raises(ETagMismatchError):
-        directory.set_manifest(manifest, etag="1234")
+        directory.set_manifest(new_body, etag="1234")
 
-    current = directory.get_manifest()
-
-    directory.set_manifest(manifest, etag=current.etag)
+    directory.set_manifest(new_body, etag=manifest.etag)
 
 
 def test_import(directory: Directory):

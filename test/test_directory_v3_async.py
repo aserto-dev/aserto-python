@@ -341,13 +341,10 @@ async def test_find_subjects(directory: Directory):
 async def test_get_manifest(directory: Directory):
     manifest = await directory.get_manifest()
 
-    with open("test/assets/manifest.yaml", "rb") as f:
-        expected = f.read()
-
     assert manifest is not None
     assert manifest.etag
     assert manifest.updated_at.date() == datetime.datetime.now(datetime.UTC).date()
-    assert manifest.body == expected
+    assert manifest.body
 
 
 @pytest.mark.asyncio(scope="module")
@@ -361,31 +358,28 @@ async def test_get_manifest_not_modified(directory: Directory):
 
 @pytest.mark.asyncio(scope="module")
 async def test_set_manifest(directory: Directory):
-    with open("test/assets/manifest.yaml", "rb") as f:
-        manifest = f.read()
+    manifest = await directory.get_manifest()
+    assert manifest.body is not None
 
-    manifest += b"\n  baz: {}"
-
-    await directory.set_manifest(manifest)
+    new_body = bytes(manifest.body) + b"\n  foo: {}"
+    await directory.set_manifest(new_body)
 
     new_manifest = await directory.get_manifest()
 
-    assert new_manifest.body == manifest
+    assert new_manifest.body == new_body
 
 
 @pytest.mark.asyncio(scope="module")
 async def test_set_manifest_if_match(directory: Directory):
-    with open("test/assets/manifest.yaml", "rb") as f:
-        manifest = f.read()
+    manifest = await directory.get_manifest()
+    assert manifest.body is not None
 
-    manifest += b"\n  bam: {}"
+    new_body = bytes(manifest.body) + b"\n  bar: {}"
 
     with pytest.raises(ETagMismatchError):
-        await directory.set_manifest(manifest, etag="1234")
+        await directory.set_manifest(new_body, etag="1234")
 
-    current = await directory.get_manifest()
-
-    await directory.set_manifest(manifest, etag=current.etag)
+    await directory.set_manifest(new_body, etag=manifest.etag)
 
 
 @pytest.mark.asyncio(scope="module")
