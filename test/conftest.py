@@ -24,15 +24,6 @@ class Topaz:
     directory_grpc: Service
 
     @staticmethod
-    def start() -> None:
-        subprocess.run(
-            "topaz start",
-            shell=True,
-            capture_output=True,
-            check=True,
-        )
-
-    @staticmethod
     def stop() -> None:
         subprocess.run(
             "topaz stop",
@@ -45,22 +36,6 @@ class Topaz:
     def import_data(path: str) -> None:
         subprocess.run(
             f"topaz ds import -i -d {path}",
-            shell=True,
-            capture_output=True,
-            check=True,
-        )
-
-    @staticmethod
-    def set_manifest(manifest_path: str) -> None:
-        subprocess.run(
-            f"topaz ds delete manifest --force -i",
-            shell=True,
-            capture_output=True,
-            check=True,
-        )
-
-        subprocess.run(
-            f"topaz ds set manifest {manifest_path} -i",
             shell=True,
             capture_output=True,
             check=True,
@@ -80,12 +55,8 @@ class Topaz:
 def topaz():
     Topaz.stop()
 
-    svc = topaz_configure()
-    svc.start()
+    svc = start_topaz()
     svc.wait_for_ready()
-
-    svc.set_manifest("test/assets/manifest.yaml")
-    svc.import_data("test/assets")
 
     yield svc
 
@@ -94,16 +65,9 @@ def topaz():
     time.sleep(1)
 
 
-def topaz_configure() -> Topaz:
+def start_topaz() -> Topaz:
     subprocess.run(
-        "topaz config new -r ghcr.io/aserto-policies/policy-todo:3 -n todo -d -f",
-        shell=True,
-        capture_output=True,
-        check=True,
-    )
-
-    subprocess.run(
-        "topaz config use todo",
+        "topaz templates install todo --no-console --force -i",
         shell=True,
         capture_output=True,
         check=True,

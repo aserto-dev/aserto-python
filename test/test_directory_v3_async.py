@@ -97,7 +97,7 @@ async def test_get_objects_paging(directory: Directory):
     page_2 = await directory.get_objects(
         page=PaginationRequest(size=10, token=page_1.page.next_token)
     )
-    assert len(page_2.results) == 9
+    assert len(page_2.results) == 10
     assert not page_2.page.next_token
 
 
@@ -184,14 +184,14 @@ async def test_delete_object(directory: Directory):
 
     # Relations should remain intact
     rel = await directory.get_relation(
-        "user", "rick@the-citadel.com", "manager", "user", "morty@the-citadel"
+        "user", "morty@the-citadel.com", "manager", "user", "rick@the-citadel"
     )
     assert rel is not None
     assert rel.object_type == "user"
-    assert rel.object_id == "rick@the-citadel.com"
+    assert rel.object_id == "morty@the-citadel.com"
     assert rel.relation == "manager"
     assert rel.subject_type == "user"
-    assert rel.subject_id == "morty@the-citadel.com"
+    assert rel.subject_id == "rick@the-citadel.com"
 
 
 @pytest.mark.asyncio(scope="module")
@@ -284,19 +284,19 @@ async def test_check_relation(directory: Directory):
 @pytest.mark.asyncio(scope="module")
 async def test_check_permission(directory: Directory):
     check_true = await directory.check_permission(
-        object_type="user",
-        object_id="rick@the-citadel.com",
-        permission="complain",
+        object_type="resource-creator",
+        object_id="resource-creators",
+        permission="can_create_resource",
         subject_type="user",
-        subject_id="morty@the-citadel.com",
+        subject_id="rick@the-citadel.com",
     )
 
     check_false = await directory.check_permission(
-        object_type="user",
-        object_id="summer@the-smiths.com",
-        permission="complain",
+        object_type="resource-creator",
+        object_id="resource-creators",
+        permission="can_create_resource",
         subject_type="user",
-        subject_id="morty@the-citadel.com",
+        subject_id="beth@the-smiths.com",
     )
 
     assert check_true == True
@@ -306,8 +306,8 @@ async def test_check_permission(directory: Directory):
 @pytest.mark.asyncio(scope="module")
 async def test_find_objects(directory: Directory):
     results = await directory.find_objects(
-        object_type="user",
-        relation="complain",
+        object_type="resource-creator",
+        relation="can_create_resource",
         subject_type="user",
         subject_id="morty@the-citadel.com",
         explain=True,
@@ -315,21 +315,21 @@ async def test_find_objects(directory: Directory):
     )
 
     assert len(results.results) == 1
-    assert results.results[0].id == "rick@the-citadel.com"
-    assert results.results[0].type == "user"
+    assert results.results[0].id == "resource-creators"
+    assert results.results[0].type == "resource-creator"
 
-    assert "user:rick@the-citadel.com" in results.explanation
-    assert len(results.explanation["user:rick@the-citadel.com"]) == 1
-    assert len(results.explanation["user:rick@the-citadel.com"][0]) == 1
-    assert isinstance(results.explanation["user:rick@the-citadel.com"][0][0], str)
+    assert "resource-creator:resource-creators" in results.explanation
+    assert len(results.explanation["resource-creator:resource-creators"]) == 1
+    assert len(results.explanation["resource-creator:resource-creators"][0]) == 1
+    assert isinstance(results.explanation["resource-creator:resource-creators"][0][0], str)
 
 
 @pytest.mark.asyncio(scope="module")
 async def test_find_subjects(directory: Directory):
     results = await directory.find_subjects(
-        object_type="user",
-        object_id="rick@the-citadel.com",
-        relation="complain",
+        object_type="resource-creator",
+        object_id="resource-creators",
+        relation="can_create_resource",
         subject_type="user",
     )
 
@@ -418,5 +418,5 @@ async def test_export(directory: Directory):
         elif isinstance(item, Relation):
             rel_count += 1
 
-    assert obj_count == 20
-    assert rel_count == 20
+    assert obj_count == 21
+    assert rel_count == 25
