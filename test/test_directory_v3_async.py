@@ -1,8 +1,8 @@
-import asyncio
 import datetime
 
 from grpc import RpcError
 import pytest
+import pytest_asyncio
 
 from aserto.client.directory import ConfigError
 from aserto.client.directory.v3.aio import (
@@ -18,16 +18,7 @@ from aserto.client.directory.v3.aio import (
 )
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module")
 async def directory(topaz):
     client = Directory(
         address=topaz.directory_grpc.address, ca_cert_path=topaz.directory_grpc.ca_cert_path
@@ -43,7 +34,7 @@ def test_client_without_address(topaz):
         Directory(ca_cert_path=topaz.directory_grpc.ca_cert_path)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_client_without_writer(topaz):
     client = Directory(
         reader_address=topaz.directory_grpc.address, ca_cert_path=topaz.directory_grpc.ca_cert_path
@@ -58,7 +49,7 @@ async def test_client_without_writer(topaz):
         await client.set_object(object=obj)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_object(directory: Directory):
     obj = await directory.get_object(object_type="user", object_id="summer@the-smiths.com")
 
@@ -67,19 +58,19 @@ async def test_get_object(directory: Directory):
     assert obj.display_name == "Summer Smith"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_object_not_found(directory: Directory):
     with pytest.raises(NotFoundError):
         await directory.get_object("user", "no-such-user")
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_object_invalid_arg(directory: Directory):
     with pytest.raises(RpcError, match="object_type: value is required"):
         await directory.get_object("", "morty@the-citadel")
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_objects_by_type(directory: Directory):
     resp = await directory.get_objects(object_type="user", page=PaginationRequest(size=10))
     objs = resp.results
@@ -88,7 +79,7 @@ async def test_get_objects_by_type(directory: Directory):
     assert all(obj.type == "user" for obj in objs)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_objects(directory: Directory):
     resp = await directory.get_objects(page=PaginationRequest(size=10))
     objs = resp.results
@@ -97,7 +88,7 @@ async def test_get_objects(directory: Directory):
     assert all(obj.type in ("user", "group", "identity") for obj in objs)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_objects_paging(directory: Directory):
     page_1 = await directory.get_objects(page=PaginationRequest(size=10))
     assert len(page_1.results) == 10
@@ -110,7 +101,7 @@ async def test_get_objects_paging(directory: Directory):
     assert not page_2.page.next_token
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_objects_many(directory: Directory):
     objs = await directory.get_object_many(
         [
@@ -126,7 +117,7 @@ async def test_get_objects_many(directory: Directory):
     assert objs[1].id == "summer@the-smiths.com"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_objects_many_not_found(directory: Directory):
     with pytest.raises(NotFoundError):
         await directory.get_object_many(
@@ -138,7 +129,7 @@ async def test_get_objects_many_not_found(directory: Directory):
         )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_set_object_from_message(directory: Directory):
     obj = await directory.get_object("user", "beth@the-smiths.com")
     obj.display_name = "Beth Smith (modified)"
@@ -151,7 +142,7 @@ async def test_set_object_from_message(directory: Directory):
     assert obj.etag != updated_obj.etag
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_set_object_from_args_with_dict_props(directory: Directory):
     props = {"email": "user@acmecorp.com"}
     new_obj = await directory.set_object(
@@ -166,7 +157,7 @@ async def test_set_object_from_args_with_dict_props(directory: Directory):
     assert all(new_obj.properties[k] == v for k, v in props.items())
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_set_object_from_args_with_struct_props(directory: Directory):
     props = Struct()
     props.update({"email": "user@acmecorp.com"})
@@ -182,7 +173,7 @@ async def test_set_object_from_args_with_struct_props(directory: Directory):
     assert all(new_obj.properties[k] == v for k, v in props.items())
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_delete_object(directory: Directory):
     # Delete an existing object
     await directory.delete_object(object_type="user", object_id="morty@the-citadel.com")
@@ -203,7 +194,7 @@ async def test_delete_object(directory: Directory):
     assert rel.subject_id == "morty@the-citadel.com"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_delete_relation(directory: Directory):
     await directory.delete_relation(
         object_type="group",
@@ -223,7 +214,7 @@ async def test_delete_relation(directory: Directory):
         )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_relation(directory: Directory):
     rel = await directory.get_relation(
         object_type="group",
@@ -238,7 +229,7 @@ async def test_get_relation(directory: Directory):
     assert rel.subject_id == "rick@the-citadel.com"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_relation_with_objects(directory: Directory):
     resp = await directory.get_relation(
         object_type="group",
@@ -259,7 +250,7 @@ async def test_get_relation_with_objects(directory: Directory):
     assert resp.subject.properties
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_relations(directory: Directory):
     resp = await directory.get_relations(
         object_type="user", relation="manager", page=PaginationRequest(size=10)
@@ -268,7 +259,7 @@ async def test_get_relations(directory: Directory):
     assert len(resp.relations) == 4
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_check_relation(directory: Directory):
     check_true = await directory.check_relation(
         object_type="group",
@@ -290,7 +281,7 @@ async def test_check_relation(directory: Directory):
     assert check_false == False
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_check_permission(directory: Directory):
     check_true = await directory.check_permission(
         object_type="user",
@@ -312,7 +303,7 @@ async def test_check_permission(directory: Directory):
     assert check_false == False
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_find_objects(directory: Directory):
     results = await directory.find_objects(
         object_type="user",
@@ -333,7 +324,7 @@ async def test_find_objects(directory: Directory):
     assert isinstance(results.explanation["user:rick@the-citadel.com"][0][0], str)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_find_subjects(directory: Directory):
     results = await directory.find_subjects(
         object_type="user",
@@ -346,7 +337,7 @@ async def test_find_subjects(directory: Directory):
     assert ObjectIdentifier(type="user", id="morty@the-citadel.com") in results.results
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_manifest(directory: Directory):
     manifest = await directory.get_manifest()
 
@@ -355,11 +346,11 @@ async def test_get_manifest(directory: Directory):
 
     assert manifest is not None
     assert manifest.etag
-    assert manifest.updated_at.date() == datetime.datetime.utcnow().date()
+    assert manifest.updated_at.date() == datetime.datetime.now(datetime.UTC).date()
     assert manifest.body == expected
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_get_manifest_not_modified(directory: Directory):
     m1 = await directory.get_manifest()
     assert m1 is not None
@@ -368,7 +359,7 @@ async def test_get_manifest_not_modified(directory: Directory):
     assert m2 is None
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_set_manifest(directory: Directory):
     with open("test/assets/manifest.yaml", "rb") as f:
         manifest = f.read()
@@ -382,7 +373,7 @@ async def test_set_manifest(directory: Directory):
     assert new_manifest.body == manifest
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_set_manifest_if_match(directory: Directory):
     with open("test/assets/manifest.yaml", "rb") as f:
         manifest = f.read()
@@ -397,7 +388,7 @@ async def test_set_manifest_if_match(directory: Directory):
     await directory.set_manifest(manifest, etag=current.etag)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_import(directory: Directory):
     async def data():
         yield Object(type="user", id="test@acmecorp.com")
@@ -417,7 +408,7 @@ async def test_import(directory: Directory):
     assert resp.relations.set == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_export(directory: Directory):
     obj_count = 0
     rel_count = 0

@@ -45,21 +45,27 @@ class Topaz:
     @staticmethod
     def import_data(path: str) -> None:
         subprocess.run(
-            f"topaz import -i -d {path}",
+            f"topaz ds import -i -d {path}",
             shell=True,
             capture_output=True,
             check=True,
         )
 
-    def set_manifest(self, manifest_path: str) -> None:
-        with open(manifest_path, "r") as f:
-            manifest = f.read()
-        resp = requests.post(
-            f"https://{self.directory_gw.address}/api/v3/directory/manifest",
-            data=manifest,
-            verify=self.directory_gw.ca_cert_path,
+    @staticmethod
+    def set_manifest(manifest_path: str) -> None:
+        subprocess.run(
+            f"topaz ds delete manifest --force",
+            shell=True,
+            capture_output=True,
+            check=True,
         )
-        resp.raise_for_status()
+
+        subprocess.run(
+            f"topaz ds set manifest {manifest_path}",
+            shell=True,
+            capture_output=True,
+            check=True,
+        )
 
     def wait_for_ready(self) -> None:
         t0 = datetime.now()
@@ -93,33 +99,37 @@ def topaz():
 
     time.sleep(1)
 
-    subprocess.run(
-        "rm ~/.config/topaz/db/directory.db",
-        shell=True,
-        capture_output=True,
-        check=True,
-    )
-
     if os.path.exists(f"{topaz_db_dir}/directory.bak"):
         os.rename(f"{topaz_db_dir}/directory.bak", f"{topaz_db_dir}/directory.db")
 
 
 def topaz_configure() -> Topaz:
     subprocess.run(
-        "topaz configure -r ghcr.io/aserto-policies/policy-todo:3 -n todo -d -f --enable-v2",
+        "topaz config new -r ghcr.io/aserto-policies/policy-todo:3 -n todo -d -f",
         shell=True,
         capture_output=True,
         check=True,
     )
 
-    ca_cert_path_grpc = os.path.expanduser("~/.config/topaz/certs/grpc-ca.crt")
-    ca_cert_path_gw = os.path.expanduser("~/.config/topaz/certs/gateway-ca.crt")
+    cert_path = topaz_cert_path()
+    ca_cert_path_grpc = os.path.join(cert_path, "grpc-ca.crt")
+    ca_cert_path_gw = os.path.join(cert_path, "gateway-ca.crt")
 
     return Topaz(
         authorizer=Service("localhost:8282", ca_cert_path=ca_cert_path_grpc),
         directory_grpc=Service("localhost:9292", ca_cert_path=ca_cert_path_grpc),
         directory_gw=Service("localhost:9393", ca_cert_path=ca_cert_path_gw),
     )
+
+
+def topaz_cert_path() -> str:
+    proc = subprocess.run(
+        "topaz config info | jq .config.topaz_certs_dir -r",
+        shell=True,
+        check=True,
+        capture_output=True,
+    )
+    return proc.stdout.decode().strip()
 
 
 def connect(svc: Service) -> grpc.Channel:

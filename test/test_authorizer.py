@@ -39,7 +39,6 @@ def make_decision_request(client: AuthorizerClient) -> Dict[str, bool]:
 
 
 def test_decision_tree_grpc(authorizer) -> None:
-    print("foobar")
     expected = {
         "todoApp.DELETE.todos.__id": {"allowed": False},
         "todoApp.GET.todos": {"allowed": True},
