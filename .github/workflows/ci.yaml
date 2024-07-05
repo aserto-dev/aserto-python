@@ -15,7 +15,7 @@ on:
 
 env:
   VAULT_ADDR: https://vault.eng.aserto.com/
-
+  GO_VERSION: "1.22"
 
 jobs:
   test:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Read Configuration
-        uses: hashicorp/vault-action@v2.7.3
+        uses: hashicorp/vault-action@v3
         id: vault
         with:
           url: ${{ env.VAULT_ADDR }}
@@ -39,7 +39,7 @@ jobs:
           git config --global url."git@github.com:".insteadOf https://github.com/
 
       - name: Checkout Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Homebrew
         uses: Homebrew/actions/setup-homebrew@master
@@ -48,20 +48,20 @@ jobs:
         run: brew tap aserto-dev/tap && brew install aserto-dev/tap/topaz && topaz install
 
       - name: Use python 3.9
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.12'
 
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 1.2.1
+          version: 1.8.3
 
       - name: Run lint
         run: |
           poetry install
           poetry run pyright .
-      
+
       - name: Run tests
         run: |
           poetry run pytest -vv
@@ -73,7 +73,7 @@ jobs:
     name: Release to pypi
     steps:
       - name: Read Configuration
-        uses: hashicorp/vault-action@v2.4.1
+        uses: hashicorp/vault-action@v3
         id: vault
         with:
           url: ${{ env.VAULT_ADDR }}
@@ -83,17 +83,17 @@ jobs:
             kv/data/pypi "API_TOKEN" | POETRY_HTTP_BASIC_PYPI_PASSWORD;
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Setup caching
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -119,12 +119,14 @@ jobs:
             go run mage.go deps
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
+        with:
+          version: 1.8.3
 
       - name: Build and push the python package
         env:

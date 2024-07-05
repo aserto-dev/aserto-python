@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import json
 import os.path
 import subprocess
 import time
@@ -7,7 +8,6 @@ from typing import Optional
 
 import grpc
 import pytest
-import requests
 
 
 @dataclass(frozen=True)
@@ -22,16 +22,6 @@ class Service:
 class Topaz:
     authorizer: Service
     directory_grpc: Service
-    directory_gw: Service
-
-    @staticmethod
-    def start() -> None:
-        subprocess.run(
-            "topaz start",
-            shell=True,
-            capture_output=True,
-            check=True,
-        )
 
     @staticmethod
     def stop() -> None:
@@ -45,21 +35,11 @@ class Topaz:
     @staticmethod
     def import_data(path: str) -> None:
         subprocess.run(
-            f"topaz import -i -d {path}",
+            f"topaz ds import -i -d {path}",
             shell=True,
             capture_output=True,
             check=True,
         )
-
-    def set_manifest(self, manifest_path: str) -> None:
-        with open(manifest_path, "r") as f:
-            manifest = f.read()
-        resp = requests.post(
-            f"https://{self.directory_gw.address}/api/v3/directory/manifest",
-            data=manifest,
-            verify=self.directory_gw.ca_cert_path,
-        )
-        resp.raise_for_status()
 
     def wait_for_ready(self) -> None:
         t0 = datetime.now()
@@ -75,17 +55,8 @@ class Topaz:
 def topaz():
     Topaz.stop()
 
-    topaz_db_dir = os.path.expanduser("~/.config/topaz/db")
-
-    if os.path.exists(f"{topaz_db_dir}/directory.db"):
-        os.rename(f"{topaz_db_dir}/directory.db", f"{topaz_db_dir}/directory.bak")
-
-    svc = topaz_configure()
-    svc.start()
+    svc = start_topaz()
     svc.wait_for_ready()
-
-    svc.set_manifest("test/assets/manifest.yaml")
-    svc.import_data("test/assets")
 
     yield svc
 
@@ -93,32 +64,36 @@ def topaz():
 
     time.sleep(1)
 
+
+def start_topaz() -> Topaz:
     subprocess.run(
-        "rm ~/.config/topaz/db/directory.db",
+        "topaz templates install todo --no-console --force -i",
         shell=True,
         capture_output=True,
         check=True,
     )
 
-    if os.path.exists(f"{topaz_db_dir}/directory.bak"):
-        os.rename(f"{topaz_db_dir}/directory.bak", f"{topaz_db_dir}/directory.db")
-
-
-def topaz_configure() -> Topaz:
-    subprocess.run(
-        "topaz configure -r ghcr.io/aserto-policies/policy-todo:3 -n todo -d -f --enable-v2",
-        shell=True,
-        capture_output=True,
-        check=True,
+    config = json.loads(
+        subprocess.run(
+            "topaz config info",
+            shell=True,
+            capture_output=True,
+            check=True,
+        )
+        .stdout.decode()
+        .strip()
     )
 
-    ca_cert_path_grpc = os.path.expanduser("~/.config/topaz/certs/grpc-ca.crt")
-    ca_cert_path_gw = os.path.expanduser("~/.config/topaz/certs/gateway-ca.crt")
+    cert_path = config["config"]["topaz_certs_dir"]
+    ca_cert_path_grpc = os.path.join(cert_path, "grpc-ca.crt")
 
     return Topaz(
-        authorizer=Service("localhost:8282", ca_cert_path=ca_cert_path_grpc),
-        directory_grpc=Service("localhost:9292", ca_cert_path=ca_cert_path_grpc),
-        directory_gw=Service("localhost:9393", ca_cert_path=ca_cert_path_gw),
+        authorizer=Service(
+            config["authorizer"]["topaz_authorizer_svc"], ca_cert_path=ca_cert_path_grpc
+        ),
+        directory_grpc=Service(
+            config["directory"]["topaz_directory_svc"], ca_cert_path=ca_cert_path_grpc
+        ),
     )
 
 

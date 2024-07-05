@@ -1,22 +1,13 @@
-import asyncio
 from typing import Dict
 
 import pytest
+import pytest_asyncio
 
 from aserto.client import AuthorizerOptions, Identity
 from aserto.client.authorizer.aio import AuthorizerClient, DecisionTree, IdentityType
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module")
 async def authorizer(topaz):
     client = AuthorizerClient(
         identity=Identity(type=IdentityType.IDENTITY_TYPE_NONE),
@@ -48,7 +39,7 @@ async def make_decision_request(client: AuthorizerClient) -> Dict[str, bool]:
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_decision_tree_grpc(authorizer: AuthorizerClient) -> None:
     expected = {
         "todoApp.DELETE.todos.__id": {"allowed": False},
@@ -63,7 +54,7 @@ async def test_decision_tree_grpc(authorizer: AuthorizerClient) -> None:
     assert result == expected
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="module")
 async def test_decision_grpc(authorizer: AuthorizerClient) -> None:
     result = await make_decision_request(authorizer)
 
