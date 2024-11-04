@@ -16,10 +16,11 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Software Development :: Libraries",
   "Typing :: Typed",
 ]
@@ -28,15 +29,16 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-aiohttp = "^3.9.5"
+python = "^3.9"
+aiohttp = "^3.10.2"
 grpcio = "^1.64.1"
 protobuf = "^5.27.2"
 aserto-authorizer = "^0.20.3"
 aserto-directory = "^0.31.4"
+certifi = ">=2024.8.30"
 
 [tool.poetry.dev-dependencies]
-black = "^23.0"
+black = "^24.0"
 isort= "^5.9.0"
 pytest-asyncio = "^0.23"
 pyright = "^1.1.0"
