@@ -167,7 +167,12 @@ def test_delete_object(directory: Directory):
 
     # Relations should remain intact
     rel = directory.get_relation(
-        "user", "morty@the-citadel.com", "manager", "user", "rick@the-citadel"
+        with_objects=False,
+        object_type="user",
+        object_id="morty@the-citadel.com",
+        relation="manager",
+        subject_type="user",
+        subject_id="rick@the-citadel.com",
     )
     assert rel is not None
     assert rel.object_type == "user"
@@ -362,7 +367,12 @@ def test_import(directory: Directory):
     with pytest.raises(NotFoundError):
         # verify that the relation doesn't exist
         directory.get_relation(
-            "user", "rick@the-citadel.com", "manager", "user", "test@acmecorp.com"
+            with_objects=False,
+            object_type="user",
+            object_id="rick@the-citadel.com",
+            relation="manager",
+            subject_type="user",
+            subject_id="test@acmecorp.com",
         )
 
     data = (
@@ -387,7 +397,12 @@ def test_import(directory: Directory):
     assert obj is not None
 
     rel = directory.get_relation(
-        "user", "rick@the-citadel.com", "manager", "user", "test@acmecorp.com"
+        with_objects=False,
+        object_type="user",
+        object_id="rick@the-citadel.com",
+        relation="manager",
+        subject_type="user",
+        subject_id="test@acmecorp.com",
     )
     assert rel is not None
 
