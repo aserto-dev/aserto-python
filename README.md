@@ -357,16 +357,6 @@ ds = Directory(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
 
 The methods on the async directory have the same signatures as their synchronous counterparts.
 
-### Directory v2 client
-
-To interact with older instances of the directory service, a v2 client is available with limited functionality.
-The v2 client doesn't support `get_manifest`/`set_manifest`, and `import_data`/`export_data`.
-
-```py
-from aserto.client.directory.v2 import Directory
-ds = Directory(api_key="my_api_key", tenant_id="1234", address="localhost:9292")
-```
-
 ## License
 
 This project is licensed under the MIT license. See the [LICENSE](https://github.com/aserto-dev/aserto-python/blob/main/LICENSE) file for more info.

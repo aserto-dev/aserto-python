@@ -339,38 +339,41 @@ class Directory:
     @typing.overload
     def get_relation(
         self,
+        *,
+        with_objects: typing.Literal[False] = False,
         object_type: str = "",
         object_id: str = "",
         relation: str = "",
         subject_type: str = "",
         subject_id: str = "",
         subject_relation: str = "",
-        with_objects: typing.Literal[False] = False,
     ) -> Relation:
         ...
 
     @typing.overload
     def get_relation(
         self,
+        *,
+        with_objects: typing.Literal[True],
         object_type: str = "",
         object_id: str = "",
         relation: str = "",
         subject_type: str = "",
         subject_id: str = "",
         subject_relation: str = "",
-        with_objects: typing.Literal[True] = True,
     ) -> RelationResponse:
         ...
 
     def get_relation(
         self,
+        *,
+        with_objects: bool = False,
         object_type: str = "",
         object_id: str = "",
         relation: str = "",
         subject_type: str = "",
         subject_id: str = "",
         subject_relation: str = "",
-        with_objects: bool = False,
     ) -> typing.Union[Relation, RelationResponse]:
         """Retrieve a directory relation that matches the specified filters.
         Raises a NotFoundError no matching relation is found.

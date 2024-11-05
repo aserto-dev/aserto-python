@@ -343,7 +343,7 @@ async def test_get_manifest(directory: Directory):
 
     assert manifest is not None
     assert manifest.etag
-    assert manifest.updated_at.date() == datetime.datetime.now(datetime.UTC).date()
+    assert manifest.updated_at.date() == datetime.datetime.now(datetime.timezone.utc).date()
     assert manifest.body
 
 
