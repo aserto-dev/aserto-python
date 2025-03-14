@@ -37,7 +37,7 @@ aserto-authorizer = "^0.20.3"
 aserto-directory = "^0.33.5"
 certifi = ">=2024.8.30"
 
-[poetry.group.dev.dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "^24.0"
 isort= "^5.9.0"
 pytest-asyncio = "^0.23"
