@@ -61,7 +61,7 @@ jobs:
           version: ${{ env.POETRY_VERSION }}
       -
         name: Install dependencies
-        run: poetry install
+        run: poetry install --with dev
       -
         name: Lint
         run: poetry run pyright .
