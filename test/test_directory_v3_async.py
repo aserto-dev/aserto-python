@@ -66,7 +66,7 @@ async def test_object_not_found(directory: Directory):
 
 @pytest.mark.asyncio(scope="module")
 async def test_object_invalid_arg(directory: Directory):
-    with pytest.raises(RpcError, match="object_type: value is required"):
+    with pytest.raises(RpcError, match="invalid argument object identifier: type"):
         await directory.get_object("", "morty@the-citadel")
 
 

@@ -31,18 +31,16 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.9"
 aiohttp = "^3.10.2"
-grpcio = "^1.64.1"
-protobuf = "^5.27.2"
-aserto-authorizer = "^0.20.3"
-aserto-directory = "^0.33.5"
-certifi = ">=2024.8.30"
+aserto-directory = "^0.33.6"
+aserto-authorizer = "^0.20.5"
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.0"
-isort= "^5.9.0"
+black = "^25.1.0"
+isort = "^6.0.1"
 pytest-asyncio = "^0.23"
 pyright = "^1.1.0"
 requests = "^2.31.0"
+grpc-stubs = ">=1.53.0.5"
 
 [tool.black]
 line-length = 100

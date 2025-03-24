@@ -61,7 +61,7 @@ def test_object_not_found(directory: Directory):
 
 
 def test_object_invalid_arg(directory: Directory):
-    with pytest.raises(grpc.RpcError, match="object_type: value is required"):
+    with pytest.raises(grpc.RpcError, match="invalid argument object identifier: type"):
         directory.get_object("", "morty@the-citadel")
 
 
