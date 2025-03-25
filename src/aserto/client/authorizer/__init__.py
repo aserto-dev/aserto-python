@@ -1,10 +1,9 @@
 import datetime
 import typing
 
-import aserto.authorizer.v2 as authorizer
-import aserto.authorizer.v2.api as api
 import grpc
-import grpc.aio as grpcaio
+
+import aserto.authorizer.v2 as authorizer
 from aserto.authorizer.v2 import (
     CompileResponse,
     GetPolicyResponse,
@@ -12,15 +11,22 @@ from aserto.authorizer.v2 import (
     QueryOptions,
     QueryResponse,
 )
+
+from aserto.authorizer.v2 import api
 from aserto.authorizer.v2.api import IdentityContext, IdentityType
 
 import aserto.client._deadline as timeout
-import aserto.client.authorizer.helpers as helpers
 import aserto.client.resource_context as res_ctx
+from aserto.client.authorizer import helpers
 from aserto.client.authorizer.helpers import DecisionTree
 from aserto.client.identity import Identity
 from aserto.client.options import AuthorizerOptions
 from aserto.client.resource_context import ResourceContext
+
+if typing.TYPE_CHECKING:
+    Metadata = grpc.Metadata
+else:
+    Metadata = typing.NewType("Metadata", typing.Tuple)
 
 
 class AuthorizerClient:
@@ -48,16 +54,16 @@ class AuthorizerClient:
         return self._options.auth_headers
 
     @property
-    def _metadata(self) -> grpcaio.Metadata:
-        return grpcaio.Metadata(*tuple(self._headers.items()))
+    def _metadata(self) -> Metadata:
+        return tuple(self._headers.items())
 
     def decision_tree(
         self,
         *,
         policy_path_root: str,
         decisions: typing.Sequence[str],
-        policy_instance_name: typing.Optional[str] = None,
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         resource_context: typing.Optional[ResourceContext] = None,
         policy_path_separator: typing.Optional[typing.Literal["DOT", "SLASH"]] = None,
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
@@ -93,8 +99,8 @@ class AuthorizerClient:
         *,
         policy_path: str,
         decisions: typing.Sequence[str],
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         resource_context: typing.Optional[ResourceContext] = None,
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
     ) -> typing.Dict[str, bool]:
@@ -129,8 +135,8 @@ class AuthorizerClient:
         input: str,
         policy_path: str,
         decisions: typing.Sequence[str],
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         resource_context: typing.Optional[ResourceContext] = None,
         options: typing.Optional[QueryOptions] = None,
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
@@ -168,8 +174,8 @@ class AuthorizerClient:
         disable_inlining: typing.Sequence[str],
         policy_path: str,
         decisions: typing.Sequence[str],
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str,
+        policy_instance_label: str = "",
         resource_context: typing.Optional[ResourceContext] = None,
         options: typing.Optional[QueryOptions] = None,
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
@@ -203,8 +209,8 @@ class AuthorizerClient:
     def list_policies(
         self,
         *,
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str,
+        policy_instance_label: str = "",
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
     ) -> ListPoliciesResponse:
         response = self.client.ListPolicies(
@@ -226,8 +232,8 @@ class AuthorizerClient:
         self,
         *,
         id: str,
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str,
+        policy_instance_label: str = "",
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
     ) -> GetPolicyResponse:
         response = self.client.GetPolicy(

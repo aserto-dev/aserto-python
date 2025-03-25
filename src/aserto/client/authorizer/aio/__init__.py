@@ -1,9 +1,10 @@
 import datetime
 import typing
 
-import aserto.authorizer.v2 as authorizer
-import aserto.authorizer.v2.api as api
 import grpc.aio as grpc
+from grpc import ssl_channel_credentials
+
+import aserto.authorizer.v2 as authorizer
 from aserto.authorizer.v2 import (
     CompileResponse,
     GetPolicyResponse,
@@ -11,16 +12,22 @@ from aserto.authorizer.v2 import (
     QueryOptions,
     QueryResponse,
 )
+
+import aserto.authorizer.v2.api as api
 from aserto.authorizer.v2.api import IdentityContext, IdentityType
-from grpc import ssl_channel_credentials
 
 import aserto.client._deadline as timeout
-import aserto.client.authorizer.helpers as helpers
 import aserto.client.resource_context as res_ctx
+from aserto.client.authorizer import helpers
 from aserto.client.authorizer.helpers import DecisionTree
 from aserto.client.identity import Identity
 from aserto.client.options import AuthorizerOptions
 from aserto.client.resource_context import ResourceContext
+
+if typing.TYPE_CHECKING:
+    AuthorizerAsyncStub = authorizer.AuthorizerAsyncStub
+else:
+    AuthorizerAsyncStub = authorizer.AuthorizerStub
 
 
 class AuthorizerClient:
@@ -41,7 +48,7 @@ class AuthorizerClient:
             target=self._options.url,
             credentials=ssl_channel_credentials(self._options.cert),
         )
-        self.client = authorizer.AuthorizerStub(self._channel)
+        self.client = typing.cast(AuthorizerAsyncStub, authorizer.AuthorizerStub(self._channel))
 
     @property
     def _headers(self) -> typing.Mapping[str, str]:
@@ -56,8 +63,8 @@ class AuthorizerClient:
         *,
         policy_path_root: str,
         decisions: typing.Sequence[str],
-        policy_instance_name: typing.Optional[str] = None,
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         resource_context: typing.Optional[ResourceContext] = None,
         policy_path_separator: typing.Optional[typing.Literal["DOT", "SLASH"]] = None,
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
@@ -93,8 +100,8 @@ class AuthorizerClient:
         *,
         policy_path: str,
         decisions: typing.Sequence[str],
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         resource_context: typing.Optional[ResourceContext] = None,
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
     ) -> typing.Dict[str, bool]:
@@ -129,8 +136,8 @@ class AuthorizerClient:
         input: str,
         policy_path: str,
         decisions: typing.Sequence[str],
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         resource_context: typing.Optional[ResourceContext] = None,
         options: typing.Optional[QueryOptions] = None,
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
@@ -168,8 +175,8 @@ class AuthorizerClient:
         disable_inlining: typing.Sequence[str],
         policy_path: str,
         decisions: typing.Sequence[str],
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         resource_context: typing.Optional[ResourceContext] = None,
         options: typing.Optional[QueryOptions] = None,
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
@@ -203,8 +210,8 @@ class AuthorizerClient:
     async def list_policies(
         self,
         *,
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
     ) -> ListPoliciesResponse:
         response = await self.client.ListPolicies(
@@ -226,8 +233,8 @@ class AuthorizerClient:
         self,
         *,
         id: str,
-        policy_instance_name: typing.Optional[str],
-        policy_instance_label: typing.Optional[str] = None,
+        policy_instance_name: str = "",
+        policy_instance_label: str = "",
         deadline: typing.Optional[typing.Union[datetime.datetime, datetime.timedelta]] = None,
     ) -> GetPolicyResponse:
         return await self.client.GetPolicy(
@@ -244,7 +251,13 @@ class AuthorizerClient:
             ),
         )
 
-    async def close(self) -> None:
-        """Closes the gRPC channel"""
+    async def close(self, grace: typing.Optional[float] = None) -> None:
+        """Closes the authorizer client's connection to the server.
 
-        await self._channel.close()
+        If a grace period is specified, this method waits until all active
+        requests are finished or until the grace period is reached. Requests that haven't
+        been terminated within the grace period are aborted.
+        If a grace period is not specified (by passing None for grace),
+        all existing requests are cancelled immediately.
+        """
+        await self._channel.close(grace)

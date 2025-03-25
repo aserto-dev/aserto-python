@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 import datetime
-from typing import List, Mapping, Optional
+from typing import List, Mapping, Optional, Sequence
+
+from google.protobuf.struct_pb2 import Struct
 
 from aserto.directory.common.v3 import Object
 from aserto.directory.common.v3 import ObjectIdentifier as ObjectIdentifierProto
 from aserto.directory.common.v3 import PaginationResponse, Relation
 from aserto.directory.exporter.v3 import Option
-from google.protobuf.struct_pb2 import Struct
 
 MAX_CHUNK_BYTES = 64 * 1024
 
@@ -50,12 +51,12 @@ class RelationsResponse:
 
     Attributes
     ----
-    relation    The returned relation.
+    relation    The returned relations.
     objects     If with_relations is True, a mapping from "type:key" to the corresponding object.
     page        The next page's token if there are more results.
     """
 
-    relations: List[Relation]
+    relations: Sequence[Relation]
     objects: Optional[Mapping[ObjectIdentifier, Object]]
     page: PaginationResponse
 
@@ -68,13 +69,14 @@ class FindResponse:
     Attributes
     ----
     results      The list of matching object identifiers.
-    explanation  For each object in results, a list of paths that connect the result to the searched object.
+    explanation  For each object in results, a list of paths that connect the result to the
+                 searched object.
     trace        The sequence of queries that were executed to find the results.
     """
 
     results: List[ObjectIdentifier]
     explanation: Mapping[str, List[List[str]]]
-    trace: List[str]
+    trace: Sequence[str]
 
 
 @dataclass(frozen=True)
@@ -116,4 +118,4 @@ def relation_objects(objects: Mapping[str, Object]) -> Mapping[ObjectIdentifier,
 
 
 def explanation_to_dict(explanation: Struct) -> Mapping[str, List[List[str]]]:
-    return {k: [[p for p in path] for path in v] for k, v in explanation.items()}  # type: ignore
+    return {k: [list(path) for path in v] for k, v in explanation.items()}  # type: ignore

@@ -1,20 +1,30 @@
 import datetime
 import typing
 
-from aserto.directory.common.v3 import Object, PaginationRequest, Relation
+import grpc
+
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Struct
+
 import aserto.directory.exporter.v3 as exporter
 import aserto.directory.importer.v3 as importer
 import aserto.directory.model.v3 as model
 import aserto.directory.reader.v3 as reader
-from aserto.directory.reader.v3 import GetObjectResponse, GetObjectsResponse
 import aserto.directory.writer.v3 as writer
-import google.protobuf.json_format as json_format
-from google.protobuf.struct_pb2 import Struct
-import grpc
 
-import aserto.client.directory as directory
-from aserto.client.directory import NotFoundError
-import aserto.client.directory.v3.helpers as helpers
+from aserto.directory.common.v3 import Object, PaginationRequest, Relation
+from aserto.directory.reader.v3 import GetObjectResponse, GetObjectsResponse
+
+from aserto.client.directory.v3 import helpers
+
+from aserto.client.directory import (
+    Channels,
+    ConfigError,
+    get_metadata,
+    InvalidArgumentError,
+    NotFoundError,
+    translate_rpc_error,
+)
 from aserto.client.directory.v3.helpers import (
     ETagMismatchError,
     ExportOption,
@@ -41,7 +51,7 @@ class Directory:
         exporter_address: str = "",
         model_address: str = "",
     ) -> None:
-        self._channels = directory.Channels(
+        self._channels = Channels(
             default_address=address,
             reader_address=reader_address,
             writer_address=writer_address,
@@ -51,7 +61,7 @@ class Directory:
             ca_cert_path=ca_cert_path,
         )
 
-        self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
+        self._metadata = get_metadata(api_key=api_key, tenant_id=tenant_id)
 
         reader_channel = self._channels.get(reader_address, address)
         self._reader = reader.ReaderStub(reader_channel) if reader_channel is not None else None
@@ -74,31 +84,31 @@ class Directory:
 
     def reader(self) -> reader.ReaderStub:
         if self._reader is None:
-            raise directory.ConfigError("reader service address not specified")
+            raise ConfigError("reader service address not specified")
 
         return self._reader
 
     def writer(self) -> writer.WriterStub:
         if self._writer is None:
-            raise directory.ConfigError("writer service address not specified")
+            raise ConfigError("writer service address not specified")
 
         return self._writer
 
     def importer(self) -> importer.ImporterStub:
         if self._importer is None:
-            raise directory.ConfigError("importer service address not specified")
+            raise ConfigError("importer service address not specified")
 
         return self._importer
 
     def exporter(self) -> exporter.ExporterStub:
         if self._exporter is None:
-            raise directory.ConfigError("expoerter service address not specified")
+            raise ConfigError("expoerter service address not specified")
 
         return self._exporter
 
     def model(self) -> model.ModelStub:
         if self._model is None:
-            raise directory.ConfigError("model service address not specified")
+            raise ConfigError("model service address not specified")
 
         return self._model
 
@@ -109,8 +119,7 @@ class Directory:
         object_id: str,
         with_relations: typing.Literal[False] = False,
         page: typing.Optional[PaginationRequest] = None,
-    ) -> Object:
-        ...
+    ) -> Object: ...
 
     @typing.overload
     def get_object(
@@ -119,8 +128,7 @@ class Directory:
         object_id: str,
         with_relations: typing.Literal[True],
         page: typing.Optional[PaginationRequest] = None,
-    ) -> GetObjectResponse:
-        ...
+    ) -> GetObjectResponse: ...
 
     def get_object(
         self,
@@ -131,6 +139,7 @@ class Directory:
     ) -> typing.Union[Object, GetObjectResponse]:
         """Retrieve a directory object by its type and id, optionally with the object's relations.
         Raises a NotFoundError if an object with the specified type and id doesn't exist.
+        Raises an InvalidArgumentError if the object type or id is invalid.
 
         Parameters
         ----
@@ -141,7 +150,8 @@ class Directory:
         with_relations: bool
             if True, the response includes all relations for the object. Default: False.
         page: typing.Optional[PaginationRequest]
-            paging information - used to iterate over all relations for an object when with_relations is True.
+            paging information - used to iterate over all relations for an object when
+            with_relations is True.
 
         Returns
         ----
@@ -164,17 +174,18 @@ class Directory:
             return response.result
 
         except grpc.RpcError as err:
-            if err.code() == grpc.StatusCode.NOT_FOUND:  # type: ignore
-                raise NotFoundError from err
+            translate_rpc_error(err)
             raise
 
     def get_object_many(
         self,
         identifiers: typing.Sequence[ObjectIdentifier],
-    ) -> typing.List[Object]:
+    ) -> typing.Sequence[Object]:
         """Retrieve a list of directory object using a list of object key and type pairs.
         Returns a list of the requested objects.
         Raises a NotFoundError if any of the objects don't exist.
+        Raises an InvalidArgumentError if the object or subject type or id is invalid or
+        if the relation isn't defined on the object type or isn't assignable to the subject type.
 
         Parameters
         ----
@@ -194,8 +205,7 @@ class Directory:
             )
             return response.results
         except grpc.RpcError as err:
-            if err.code() == grpc.StatusCode.NOT_FOUND:  # type: ignore
-                raise NotFoundError from err
+            translate_rpc_error(err)
             raise
 
     def get_objects(
@@ -227,19 +237,20 @@ class Directory:
 
     @typing.overload
     def set_object(self, *, object: Object) -> Object:
-        """Create a new directory object or updates an existing object if an object with the same type and id already exists.
-        To update an existing object, the etag field must be set to the value of the current object's etag.
+        """Create a new directory object or updates an existing object if an object with the same
+        type and id already exists.
+        To update an existing object, the etag field must be set to the value of the current
+        object's etag.
         Returns the created/updated object.
 
         Parameters
         ----
-        object : Object
+        obj : Object
 
         Returns
         ----
         The created/updated object.
         """
-        ...
 
     @typing.overload
     def set_object(
@@ -251,8 +262,10 @@ class Directory:
         properties: typing.Optional[typing.Union[typing.Mapping[str, typing.Any], Struct]] = None,
         etag: str = "",
     ) -> Object:
-        """Create a new directory object or updates an existing object if an object with the same type and id already exists.
-        To update an existing object, the etag argument must be set to the value of the current object's etag.
+        """Create a new directory object or updates an existing object if an object with the same
+        type and id already exists.
+        To update an existing object, the etag argument must be set to the value of the current
+        object's etag.
         Returns the created/updated object.
 
         Parameters
@@ -264,16 +277,16 @@ class Directory:
         display_name: str,
             optional display name for the object.
         properties: typing.Optional[typing.Union[typing.Mapping[str, typing.Any], Struct]],
-            optional JSON properties to set on the object. This can be passed in as a dict with string keys and
-            JSON-serializable values, or as a Struct.
+            optional JSON properties to set on the object. This can be passed in as a dict with
+            string keys and JSON-serializable values, or as a Struct.
         etag: str
-            optional etag. If set and the current object's etag doesn't match, the call raises an EtagMismatchError.
+            optional etag. If set and the current object's etag doesn't match, the call raises
+            an EtagMismatchError.
 
         Returns
         ----
         The created/updated object.
         """
-        ...
 
     def set_object(
         self,
@@ -347,8 +360,7 @@ class Directory:
         subject_type: str = "",
         subject_id: str = "",
         subject_relation: str = "",
-    ) -> Relation:
-        ...
+    ) -> Relation: ...
 
     @typing.overload
     def get_relation(
@@ -361,8 +373,7 @@ class Directory:
         subject_type: str = "",
         subject_id: str = "",
         subject_relation: str = "",
-    ) -> RelationResponse:
-        ...
+    ) -> RelationResponse: ...
 
     def get_relation(
         self,
@@ -377,6 +388,8 @@ class Directory:
     ) -> typing.Union[Relation, RelationResponse]:
         """Retrieve a directory relation that matches the specified filters.
         Raises a NotFoundError no matching relation is found.
+        Raises an InvalidArgumentError if the object or subject type or id is invalid or
+        if the relation isn't defined on the object type or isn't assignable to the subject type.
         Also returns the relation's object and subject if with_objects is set to True.
 
         Parameters
@@ -429,8 +442,7 @@ class Directory:
             )
 
         except grpc.RpcError as err:
-            if err.code() == grpc.StatusCode.NOT_FOUND:  # type: ignore
-                raise NotFoundError from err
+            translate_rpc_error(err)
             raise
 
     def get_relations(
@@ -451,13 +463,15 @@ class Directory:
         object_type : str
             include relations where the object is of this type.
         object_id: str
-            include relations where the object has this id. If specified, object_type must also be specified.
+            include relations where the object has this id. If specified, object_type must also be
+            specified.
         relation: str
             include relations of this type.
         subject_type : str
             include relations where the subject is of this type.
         subject_id: str
-            include relations where the subject has this id. If specified, subject_type must also be specified.
+            include relations where the subject has this id. If specified, subject_type must also be
+            specified.
         subject_relation: str
             include relations the specified subject relation.
         with_objects: bool
@@ -549,7 +563,7 @@ class Directory:
         relation: str,
         subject_type: str,
         subject_id: str,
-        subject_relation: typing.Optional[str] = None,
+        subject_relation: str = "",
     ) -> None:
         """Deletes a relation.
 
@@ -608,10 +622,11 @@ class Directory:
         subject_type : str
             the type of subject to search for.
         subject_relation: str
-            optional subject relation. This is useful when searching for intermediate subjects like groups.
+            optional subject relation. This is useful when searching for intermediate subjects like
+            groups.
         explain: bool
-            if True, the response includes, for each match, the set of relations that grant the specified relation or
-            permission .
+            if True, the response includes, for each match, the set of relations that grant the
+            specified relation or permission.
         trace: bool
             if True, the response includes the trace of the search process.
 
@@ -661,10 +676,11 @@ class Directory:
         subject_id: str
             the id of the subject to search from.
         subject_relation: str
-            optional subject relation. This is useful when searching for intermediate subjects like groups.
+            optional subject relation. This is useful when searching for intermediate subjects like
+            groups.
         explain: bool
-            if True, the response includes, for each match, the set of relations that grant the specified relation or
-            permission .
+            if True, the response includes, for each match, the set of relations that grant the
+            specified relation or permission.
         trace: bool
             if True, the response includes the trace of the search process.
 
@@ -700,7 +716,8 @@ class Directory:
         subject_id: str,
     ) -> bool:
         """Checks if a subject has a given permissions or relation to an object.
-        Returns True if the subject has the specified permission/relation to the object. False, otherwise.
+        Returns True if the subject has the specified permission/relation to the object.
+        False, otherwise.
 
         Parameters
         ----
@@ -814,12 +831,10 @@ class Directory:
         return response.check
 
     @typing.overload
-    def get_manifest(self) -> Manifest:
-        ...
+    def get_manifest(self) -> Manifest: ...
 
     @typing.overload
-    def get_manifest(self, etag: str) -> typing.Optional[Manifest]:
-        ...
+    def get_manifest(self, etag: str) -> typing.Optional[Manifest]: ...
 
     def get_manifest(self, etag: str = "") -> typing.Optional[Manifest]:
         """Returns the current manifest.
@@ -926,7 +941,7 @@ class Directory:
         return ImportResponse(obj_counter, rel_counter)
 
     def export_data(
-        self, options: ExportOption, start_from: typing.Optional[datetime.datetime] = None
+        self, options: ExportOption.ValueType, start_from: typing.Optional[datetime.datetime] = None
     ) -> typing.Iterator[typing.Union[Object, Relation]]:
         """Exports data from the directory.
 
@@ -938,7 +953,8 @@ class Directory:
             OPTION_DATA - export both objects and relations
 
         start_from: typing.Optional[datetime.datetime]
-            if provided, only objects and relations that have been modified after this date are exported.
+            if provided, only objects and relations that have been modified after this date are
+            exported.
         """
 
         req = exporter.ExportRequest(options=options)
@@ -959,25 +975,27 @@ class Directory:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback) -> None:
+    def __exit__(self, typ, value, traceback) -> None:
         self.close()
 
 
 __all__ = [
+    "ConfigError",
     "Directory",
-    "GetObjectResponse",
-    "GetObjectsResponse",
-    "Object",
-    "NotFoundError",
-    "PaginationRequest",
-    "Relation",
-    "Struct",
     "ETagMismatchError",
     "ExportOption",
+    "GetObjectResponse",
+    "GetObjectsResponse",
     "ImportCounter",
     "ImportResponse",
+    "InvalidArgumentError",
     "Manifest",
+    "NotFoundError",
+    "Object",
     "ObjectIdentifier",
+    "PaginationRequest",
+    "Relation",
     "RelationResponse",
     "RelationsResponse",
+    "Struct",
 ]

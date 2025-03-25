@@ -9,6 +9,7 @@ from aserto.client.directory.v3.aio import (
     Directory,
     ETagMismatchError,
     ExportOption,
+    InvalidArgumentError,
     NotFoundError,
     Object,
     ObjectIdentifier,
@@ -18,8 +19,8 @@ from aserto.client.directory.v3.aio import (
 )
 
 
-@pytest_asyncio.fixture(scope="module")
-async def directory(topaz):
+@pytest_asyncio.fixture(name="directory", scope="module")
+async def fixture_directory(topaz):
     client = Directory(
         address=topaz.directory_grpc.address, ca_cert_path=topaz.directory_grpc.ca_cert_path
     )
@@ -66,7 +67,7 @@ async def test_object_not_found(directory: Directory):
 
 @pytest.mark.asyncio(scope="module")
 async def test_object_invalid_arg(directory: Directory):
-    with pytest.raises(RpcError, match="object_type: value is required"):
+    with pytest.raises(InvalidArgumentError, match="invalid argument object identifier: type"):
         await directory.get_object("", "morty@the-citadel")
 
 
@@ -282,8 +283,8 @@ async def test_check_relation(directory: Directory):
         subject_id="morty@the-citadel.com",
     )
 
-    assert check_true == True
-    assert check_false == False
+    assert check_true is True
+    assert check_false is False
 
 
 @pytest.mark.asyncio(scope="module")
@@ -304,8 +305,8 @@ async def test_check_permission(directory: Directory):
         subject_id="beth@the-smiths.com",
     )
 
-    assert check_true == True
-    assert check_false == False
+    assert check_true is True
+    assert check_false is False
 
 
 @pytest.mark.asyncio(scope="module")

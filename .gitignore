@@ -2,9 +2,11 @@ dist
 __pycache__
 .DS_Store
 .env
+.envrc
 .mypy_cache
 .pytest_cache
 .vscode
 .coverage
 .python-version
 .ext
+.dmypy.json

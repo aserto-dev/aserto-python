@@ -17,8 +17,8 @@ on:
 env:
   VAULT_ADDR: https://vault.eng.aserto.com/
   PYTHON_VERSION: "3.9"
-  POETRY_VERSION: "1.8.3"
-  TOPAZ_VERSION: "0.32.38"
+  POETRY_VERSION: "2.1.1"
+  TOPAZ_VERSION: "0.32.56"
 
 jobs:
   test:
@@ -119,10 +119,7 @@ jobs:
           poetry publish
       -
         name: Bump version
-        id: bump
-        uses: callowayproject/bump-my-version@master
-        with:
-          args: patch
+        run: poetry version patch
       -
         name: Commit changes
         uses: EndBug/add-and-commit@v9

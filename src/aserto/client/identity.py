@@ -6,5 +6,5 @@ from aserto.authorizer.v2.api import IdentityType
 
 @dataclass
 class Identity:
-    type: IdentityType
+    type: IdentityType.ValueType
     value: Optional[str] = None
