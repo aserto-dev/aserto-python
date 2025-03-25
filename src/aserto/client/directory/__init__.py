@@ -30,6 +30,6 @@ def get_metadata(api_key, tenant_id) -> Tuple[Tuple[str, str], ...]:
 
 def translate_rpc_error(err: RpcError) -> None:
     if err.code() == StatusCode.NOT_FOUND:
-        raise NotFoundError from err
+        raise NotFoundError(err.details()) from err
     if err.code() == StatusCode.INVALID_ARGUMENT:
-        raise InvalidArgumentError from err
+        raise InvalidArgumentError(err.details()) from err

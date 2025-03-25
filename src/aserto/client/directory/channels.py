@@ -1,5 +1,6 @@
-from grpc import secure_channel, Channel, ChannelCredentials, ssl_channel_credentials
 from typing import Optional
+
+from grpc import secure_channel, Channel, ChannelCredentials, ssl_channel_credentials
 
 
 def validate_addresses(
@@ -10,13 +11,15 @@ def validate_addresses(
     exporter_address: str,
     model_address: str,
 ) -> None:
-    if (
-        address == ""
-        and reader_address == ""
-        and writer_address == ""
-        and importer_address == ""
-        and exporter_address == ""
-        and model_address == ""
+    if not any(
+        (
+            address,
+            reader_address,
+            writer_address,
+            importer_address,
+            exporter_address,
+            model_address,
+        ),
     ):
         raise ValueError("at least one directory service address must be specified")
 
@@ -67,7 +70,7 @@ class Channels:
             exporter_address,
             model_address,
         ]
-        self._channels = dict()
+        self._channels = {}
         for x in self._addresses:
             if x and x not in self._channels:
                 self._channels[x] = build_grpc_channel(x, ca_cert_path=ca_cert_path)

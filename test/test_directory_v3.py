@@ -1,6 +1,5 @@
 import datetime
 
-import grpc
 import pytest
 
 from aserto.client.directory import ConfigError
@@ -8,6 +7,7 @@ from aserto.client.directory.v3 import (
     Directory,
     ETagMismatchError,
     ExportOption,
+    InvalidArgumentError,
     NotFoundError,
     Object,
     ObjectIdentifier,
@@ -17,8 +17,8 @@ from aserto.client.directory.v3 import (
 )
 
 
-@pytest.fixture(scope="module")
-def directory(topaz):
+@pytest.fixture(name="directory", scope="module")
+def fixture_directory(topaz):
     client = Directory(
         address=topaz.directory_grpc.address, ca_cert_path=topaz.directory_grpc.ca_cert_path
     )
@@ -61,7 +61,7 @@ def test_object_not_found(directory: Directory):
 
 
 def test_object_invalid_arg(directory: Directory):
-    with pytest.raises(grpc.RpcError, match="invalid argument object identifier: type"):
+    with pytest.raises(InvalidArgumentError, match="invalid argument object identifier: type"):
         directory.get_object("", "morty@the-citadel")
 
 
@@ -260,8 +260,8 @@ def test_check_relation(directory: Directory):
         subject_id="morty@the-citadel.com",
     )
 
-    assert check_true == True
-    assert check_false == False
+    assert check_true is True
+    assert check_false is False
 
 
 def test_check_permission(directory: Directory):
@@ -281,8 +281,8 @@ def test_check_permission(directory: Directory):
         subject_id="beth@the-smiths.com",
     )
 
-    assert check_true == True
-    assert check_false == False
+    assert check_true is True
+    assert check_false is False
 
 
 def test_find_objects(directory: Directory):

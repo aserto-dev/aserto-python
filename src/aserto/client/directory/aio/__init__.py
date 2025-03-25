@@ -1,5 +1,7 @@
-import grpc.aio as grpc_aio
 from typing import Optional
+
+import grpc.aio as grpc_aio
+
 from aserto.client.directory.channels import channel_credentials, validate_addresses
 
 
@@ -41,7 +43,7 @@ class Channels:
             exporter_address,
             model_address,
         ]
-        self._channels = dict()
+        self._channels = {}
         for x in self._addresses:
             if x and x not in self._channels:
                 self._channels[x] = build_grpc_channel(x, ca_cert_path=ca_cert_path)

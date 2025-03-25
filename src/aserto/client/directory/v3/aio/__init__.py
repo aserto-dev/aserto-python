@@ -1,9 +1,9 @@
 import datetime
 import typing
 
-import google.protobuf.json_format as json_format
 import grpc.aio as grpc
 
+from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 from grpc import RpcError, StatusCode
 
@@ -16,15 +16,17 @@ import aserto.directory.writer.v3 as writer
 from aserto.directory.common.v3 import Object, PaginationRequest, Relation
 from aserto.directory.reader.v3 import GetObjectResponse, GetObjectsResponse
 
-import aserto.client.directory.aio as aio
-import aserto.client.directory.v3.helpers as helpers
+from aserto.client.directory import aio
+from aserto.client.directory.v3 import helpers
 
 from aserto.client.directory import (
     ConfigError,
+    get_metadata,
     InvalidArgumentError,
     NotFoundError,
     translate_rpc_error,
 )
+
 from aserto.client.directory.v3.helpers import (
     ETagMismatchError,
     ExportOption,
@@ -36,6 +38,19 @@ from aserto.client.directory.v3.helpers import (
     RelationResponse,
     RelationsResponse,
 )
+
+if typing.TYPE_CHECKING:
+    ExporterAsyncStub = exporter.ExporterAsyncStub
+    ImporterAsyncStub = importer.ImporterAsyncStub
+    ModelAsyncStub = model.ModelAsyncStub
+    ReaderAsyncStub = reader.ReaderAsyncStub
+    WriterAsyncStub = writer.WriterAsyncStub
+else:
+    ExporterAsyncStub = exporter.ExporterStub
+    ImporterAsyncStub = importer.ImporterStub
+    ModelAsyncStub = model.ModelStub
+    ReaderAsyncStub = reader.ReaderStub
+    WriterAsyncStub = writer.WriterStub
 
 
 class Directory:
@@ -61,52 +76,68 @@ class Directory:
             ca_cert_path=ca_cert_path,
         )
 
-        self._metadata = directory.get_metadata(api_key=api_key, tenant_id=tenant_id)
+        self._metadata = get_metadata(api_key=api_key, tenant_id=tenant_id)
 
         reader_channel = self._channels.get(reader_address, address)
-        self._reader = reader.ReaderStub(reader_channel) if reader_channel is not None else None
+        self._reader = (
+            typing.cast(ReaderAsyncStub, reader.ReaderStub(reader_channel))
+            if reader_channel is not None
+            else None
+        )
 
         writer_channel = self._channels.get(writer_address, address)
-        self._writer = writer.WriterStub(writer_channel) if writer_channel is not None else None
+        self._writer = (
+            typing.cast(WriterAsyncStub, writer.WriterStub(writer_channel))
+            if writer_channel is not None
+            else None
+        )
 
         model_channel = self._channels.get(model_address, address)
-        self._model = model.ModelStub(model_channel) if model_channel is not None else None
+        self._model = (
+            typing.cast(ModelAsyncStub, model.ModelStub(model_channel))
+            if model_channel is not None
+            else None
+        )
 
         importer_channel = self._channels.get(importer_address, address)
         self._importer = (
-            importer.ImporterStub(importer_channel) if importer_channel is not None else None
+            typing.cast(ImporterAsyncStub, importer.ImporterStub(importer_channel))
+            if importer_channel is not None
+            else None
         )
 
         exporter_channel = self._channels.get(exporter_address, address)
         self._exporter = (
-            exporter.ExporterStub(exporter_channel) if exporter_channel is not None else None
+            typing.cast(ExporterAsyncStub, exporter.ExporterStub(exporter_channel))
+            if exporter_channel is not None
+            else None
         )
 
-    def reader(self) -> reader.ReaderStub:
+    def reader(self) -> ReaderAsyncStub:
         if self._reader is None:
             raise ConfigError("reader service address not specified")
 
         return self._reader
 
-    def writer(self) -> writer.WriterStub:
+    def writer(self) -> WriterAsyncStub:
         if self._writer is None:
             raise ConfigError("writer service address not specified")
 
         return self._writer
 
-    def importer(self) -> importer.ImporterStub:
+    def importer(self) -> ImporterAsyncStub:
         if self._importer is None:
             raise ConfigError("importer service address not specified")
 
         return self._importer
 
-    def exporter(self) -> exporter.ExporterStub:
+    def exporter(self) -> ExporterAsyncStub:
         if self._exporter is None:
             raise ConfigError("expoerter service address not specified")
 
         return self._exporter
 
-    def model(self) -> model.ModelStub:
+    def model(self) -> ModelAsyncStub:
         if self._model is None:
             raise ConfigError("model service address not specified")
 
@@ -142,7 +173,7 @@ class Directory:
     async def get_object_many(
         self,
         identifiers: typing.Sequence[ObjectIdentifier],
-    ) -> typing.List[Object]:
+    ) -> typing.Sequence[Object]:
         """Retrieve a set of directory objects.
         Returns a list of all objects that were found.
 
@@ -153,8 +184,8 @@ class Directory:
 
         Returns
         ----
-        list
-            list of directory objects
+        Sequence[Object]
+            sequence of directory objects
         """
 
         try:
@@ -562,7 +593,7 @@ class Directory:
         relation: str,
         subject_type: str,
         subject_id: str,
-        subject_relation: typing.Optional[str] = None,
+        subject_relation: str = "",
     ) -> None:
         """Deletes a relation.
 
@@ -940,7 +971,7 @@ class Directory:
         return ImportResponse(obj_counter, rel_counter)
 
     async def export_data(
-        self, options: ExportOption, start_from: typing.Optional[datetime.datetime] = None
+        self, options: ExportOption.ValueType, start_from: typing.Optional[datetime.datetime] = None
     ) -> typing.AsyncIterator[typing.Union[Object, Relation]]:
         """Exports data from the directory.
 

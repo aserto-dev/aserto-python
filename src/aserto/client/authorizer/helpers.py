@@ -2,18 +2,18 @@ from typing import Dict, Literal
 
 from aserto.authorizer.v2 import DecisionTreeResponse, PathSeparator
 
-from aserto.client._typing import assert_unreachable
-
 DecisionTree = Dict[str, Dict[str, bool]]
 
 
-def policy_path_separator_field(policy_path_separator: Literal["DOT", "SLASH"]) -> PathSeparator:
+def policy_path_separator_field(
+    policy_path_separator: Literal["DOT", "SLASH"],
+) -> PathSeparator.ValueType:
     if policy_path_separator == "DOT":
         return PathSeparator.PATH_SEPARATOR_DOT
-    elif policy_path_separator == "SLASH":
+    if policy_path_separator == "SLASH":
         return PathSeparator.PATH_SEPARATOR_SLASH
-    else:
-        assert_unreachable(policy_path_separator)
+
+    raise ValueError(f"Invalid PathSeparator: {policy_path_separator}")
 
 
 def validate_decision_tree(response: DecisionTreeResponse) -> DecisionTree:

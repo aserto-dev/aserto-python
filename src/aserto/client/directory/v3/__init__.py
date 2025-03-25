@@ -180,7 +180,7 @@ class Directory:
     def get_object_many(
         self,
         identifiers: typing.Sequence[ObjectIdentifier],
-    ) -> typing.List[Object]:
+    ) -> typing.Sequence[Object]:
         """Retrieve a list of directory object using a list of object key and type pairs.
         Returns a list of the requested objects.
         Raises a NotFoundError if any of the objects don't exist.
@@ -563,7 +563,7 @@ class Directory:
         relation: str,
         subject_type: str,
         subject_id: str,
-        subject_relation: typing.Optional[str] = None,
+        subject_relation: str = "",
     ) -> None:
         """Deletes a relation.
 
@@ -941,7 +941,7 @@ class Directory:
         return ImportResponse(obj_counter, rel_counter)
 
     def export_data(
-        self, options: ExportOption, start_from: typing.Optional[datetime.datetime] = None
+        self, options: ExportOption.ValueType, start_from: typing.Optional[datetime.datetime] = None
     ) -> typing.Iterator[typing.Union[Object, Relation]]:
         """Exports data from the directory.
 

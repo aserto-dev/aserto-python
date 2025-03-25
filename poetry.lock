@@ -133,14 +133,14 @@ frozenlist = ">=1.1.0"
 
 [[package]]
 name = "aserto-authorizer"
-version = "0.20.5"
+version = "0.20.7"
 description = "gRPC client for Aserto Authorizer service instances"
 optional = false
 python-versions = "<4,>=3.9"
 groups = ["main"]
 files = [
-    {file = "aserto_authorizer-0.20.5-py3-none-any.whl", hash = "sha256:50a1c00c0b09e3bb28f478ca67976b9af171542129ab41c7444cf8b21c1834ad"},
-    {file = "aserto_authorizer-0.20.5.tar.gz", hash = "sha256:3d99a11916d2e6d96c0dbd4268641101021d86f215213d5306cbe7490ff01cd5"},
+    {file = "aserto_authorizer-0.20.7-py3-none-any.whl", hash = "sha256:daba6d3e4d8c77686dd2b02b4646407941d1482b83d956f70fa13fee80d64ad5"},
+    {file = "aserto_authorizer-0.20.7.tar.gz", hash = "sha256:9e54fba9f30f64e129212734162d9f7e007b6fb5ef1ba32666a456ba5dd4438a"},
 ]
 
 [package.dependencies]
@@ -150,14 +150,14 @@ types-protobuf = ">=5.29,<6.0"
 
 [[package]]
 name = "aserto-directory"
-version = "0.33.6"
+version = "0.33.8"
 description = "gRPC client for Aserto Directory service instances"
 optional = false
 python-versions = "<4,>=3.9"
 groups = ["main"]
 files = [
-    {file = "aserto_directory-0.33.6-py3-none-any.whl", hash = "sha256:6ff7cd5aafddcfb3abf1b8b4244cd3084b5e083aee2cb4259c5d2409e973f0d4"},
-    {file = "aserto_directory-0.33.6.tar.gz", hash = "sha256:451294cb45077ea2565e7243fd1353b50f14caca5248d041d1cb6a66011df812"},
+    {file = "aserto_directory-0.33.8-py3-none-any.whl", hash = "sha256:db252ffbdd24ddf8ebed3755f649796d2497aee489a4c2d3396516d2a6c1785b"},
+    {file = "aserto_directory-0.33.8.tar.gz", hash = "sha256:05c297cf528313100263f6bda047d5fbd21aa2d80fde0f0239dd1fbb7314f3cd"},
 ]
 
 [package.dependencies]
@@ -1211,4 +1211,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "fd62f3e99af129afa166a02bb3f491208dc7decbf60452928296661da24505ef"
+content-hash = "865b8ca3361b653d33e664e909fc2e8713ab34ed038a30359e960396b7ccda96"

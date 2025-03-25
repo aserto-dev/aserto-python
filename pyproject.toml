@@ -31,8 +31,8 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.9"
 aiohttp = "^3.10.2"
-aserto-directory = "^0.33.6"
-aserto-authorizer = "^0.20.5"
+aserto-directory = "^0.33.8"
+aserto-authorizer = "^0.20.7"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
@@ -49,6 +49,16 @@ target-version = ["py38"]
 [tool.isort]
 profile = "black"
 
+[tool.pylint]
+max-line-length = 100
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
